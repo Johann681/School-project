@@ -7,7 +7,7 @@ import { CheckCircle, Award, Star } from 'react-feather';
 
 const About = () => {
   return (
-    <div className="bg-white">
+    <div className="bg-white mt-15">
       {/* Page Header */}
       <section className="bg-gray-100 py-12">
         <div className="max-w-3xl mx-auto px-4 text-center">
