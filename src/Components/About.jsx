@@ -1,7 +1,7 @@
 import React from 'react';
-import storyImage from '../assets/Story.JPG';
-import approvalsImage from '../assets/approvals.JPG';
-import missionImage from '../assets/mission.JPG';
+import storyImage from '../assets/Story.jpg';
+import approvalsImage from '../assets/approvals.jpg';
+import missionImage from '../assets/mission.jpg';
 import proprietorImage from '../assets/prop2.jpg';
 import { CheckCircle, Award, Star } from 'react-feather';
 
