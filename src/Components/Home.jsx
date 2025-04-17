@@ -56,7 +56,7 @@ const Home = () => {
               Discover our rigorous programs, vibrant campus life, and the opportunities that will shape your future.
             </p>
             <Link
-              to="/admissions"
+              to="/login"
               className="inline-block bg-blue-600 text-white text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium hover:bg-blue-700 transition-shadow shadow-sm hover:shadow-md"
             >
               Apply Now

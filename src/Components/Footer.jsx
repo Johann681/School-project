@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaMapMarkerAlt, FaPhoneAlt, FaEnvelope, FaInstagram } from 'react-icons/fa';
+import { Link } from "react-router-dom"; // Add this at the top
 
 const Footer = () => {
   return (
@@ -11,8 +12,10 @@ const Footer = () => {
           <div className="space-y-4">
             <h3 className="text-xl font-semibold text-white">Greater Access Private Schools</h3>
             <p className="text-sm">
-              <a href="sign-up.html"   className="bg-white text-green-700 px-5 py-2 rounded font-semibold hover:bg-green-600 hover:text-white transition-all duration-300 shadow">Sign Up</a>
-            </p>
+  <Link to="/login" className="bg-white text-green-700 px-5 py-2 rounded font-semibold hover:bg-green-600 hover:text-white transition-all duration-300 shadow">
+    Sign Up
+  </Link>
+</p>
             <p className="text-xs mt-2">© 2023 Greater Access Schools. All rights reserved.</p>
           </div>
 
