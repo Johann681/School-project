@@ -12,11 +12,11 @@ const Footer = () => {
 
   return (
     <footer className="bg-gradient-to-r from-gray-900 to-gray-800 text-gray-300 py-5 relative">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
           {/* Left Column */}
           <div className="space-y-5">
-            <h3 className="text-2xl font-bold text-white">
+            <h3 className="text-xl font-bold text-white">
               Greater Access Schools
             </h3>
             <p className="text-sm">
@@ -33,20 +33,20 @@ const Footer = () => {
           </div>
 
           {/* Center Column */}
-          <div className="space-y-4 text-sm">
+          <div className="space-y-4 pt-4  text-sm">
             <div className="flex items-start gap-3">
-              <FaMapMarkerAlt className="text-xl text-green-400 mt-1" />
-              <p>15-17 Irepodun Close, Isahsi/Akute, Ogun State</p>
+              <FaMapMarkerAlt className="text-xs text-green-400 mt-1" />
+              <p className="text-xs">15-17 Irepodun Close, Isahsi/Akute, Ogun State</p>
             </div>
             <div className="flex items-center gap-3">
-              <FaPhoneAlt className="text-xl text-green-400" />
-              <p>{phoneNumber}</p>
+              <FaPhoneAlt className="text-xs text-green-400" />
+              <p className="text-xs">{phoneNumber}</p>
             </div>
             <div className="flex items-center gap-3">
-              <FaEnvelope className="text-xl text-green-400" />
+              <FaEnvelope className="text-xs text-green-400" />
               <a
                 href="mailto:greateraccessprivate.schools@gmail.com"
-                className="hover:text-green-400 transition"
+                className="hover:text-green-400 transition text-xs"
               >
                 greateraccessprivate.schools@gmail.com
               </a>
@@ -55,8 +55,8 @@ const Footer = () => {
 
           {/* Right Column */}
           <div className="space-y-5 text-sm">
+          <span className="font-semibold text-xs text-white">About Us</span>
             <p>
-              <span className="font-semibold text-white">About Us</span>
               <br />
               Greater Access Private Schools... Your gateway to greater heights.
               Stay connected with us!
