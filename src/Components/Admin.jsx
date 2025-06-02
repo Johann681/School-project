@@ -145,7 +145,7 @@ const Admin = () => {
       </h3>
 
       {fetchingStudents ? (
-        <p className="text-gray-700">Loading students...</p>
+        <p className="text-gray-700">Loading students....</p>
       ) : students.length === 0 ? (
         <p className="text-gray-600">No students enrolled</p>
       ) : (
