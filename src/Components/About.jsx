@@ -38,7 +38,7 @@ const About = () => {
             Greater Access Private Schools was founded on the belief that every
             child deserves a nurturing environment to thrive. Since our inception,
             we have maintained low student-to-teacher ratios, ensuring personalized
-            attention and holistic development.
+            attention and holistic developments.
           </p>
           <p className="text-gray-700 leading-relaxed">
             Our community of dedicated educators fosters confidence, creativity,
