@@ -122,8 +122,8 @@ const Admin = () => {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto mt-12">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 max-w-6xl mx-auto mt-12">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
         <h2 className="text-3xl font-semibold text-gray-900">
           Admin Dashboard
         </h2>
@@ -153,15 +153,15 @@ const Admin = () => {
           {students.map((student) => (
             <div
               key={student._id}
-              className="bg-white shadow rounded-lg p-4 text-sm md:grid md:grid-cols-6 md:gap-4"
+              className="bg-white shadow rounded-lg p-4 text-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4"
             >
-              <div className="mb-2 md:mb-0">
+              <div className="min-w-0">
                 <p className="font-semibold text-gray-700">Name</p>
-                <p className="text-gray-900">{student.fullName}</p>
+                <p className="text-gray-900 break-words">{student.fullName}</p>
               </div>
-              <div className="mb-2 md:mb-0">
+              <div className="min-w-0">
                 <p className="font-semibold text-gray-700">Email</p>
-                <p className="flex items-center text-gray-900">
+                <p className="flex items-center text-gray-900 break-all">
                   {student.email}
                   <button
                     onClick={() => copyEmail(student.email)}
@@ -172,21 +172,21 @@ const Admin = () => {
                   </button>
                 </p>
               </div>
-              <div className="mb-2 md:mb-0">
+              <div className="min-w-0">
                 <p className="font-semibold text-gray-700">Phone</p>
-                <p className="text-gray-900">{student.phone}</p>
+                <p className="text-gray-900 break-words">{student.phone}</p>
               </div>
-              <div className="mb-2 md:mb-0">
+              <div className="min-w-0">
                 <p className="font-semibold text-gray-700">DOB</p>
                 <p className="text-gray-900">
                   {new Date(student.dob).toLocaleDateString()}
                 </p>
               </div>
-              <div className="mb-2 md:mb-0">
+              <div className="min-w-0">
                 <p className="font-semibold text-gray-700">Class</p>
                 <p className="text-gray-900">{student.class}</p>
               </div>
-              <div className="mb-2 md:mb-0">
+              <div className="min-w-0">
                 <p className="font-semibold text-gray-700">Department</p>
                 <p className="text-gray-900">{student.department}</p>
                 <button
