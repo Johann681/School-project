@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Student = require("../models/students");  // your students model
-const Admin = require("../models/admin");        // your admin model
+const Admin = require("../models/Admin");        // your admin model
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 
