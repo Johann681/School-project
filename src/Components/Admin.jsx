@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
+const api = axios.create({
+  baseURL: "https://school-project-i40q.onrender.com/api",
+});
+
 const Admin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -20,13 +24,10 @@ const Admin = () => {
     setError("");
 
     try {
-      const res = await axios.post(
-        "https://school-project-i40q.onrender.com/api/admin/login",
-        {
-          username,
-          password,
-        }
-      );
+      const res = await api.post("/admin/login", {
+        username,
+        password,
+      });
 
       const receivedToken = res.data.token;
       setToken(receivedToken);
@@ -46,7 +47,7 @@ const Admin = () => {
     setFetchingStudents(true);
     setError("");
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/students", {
+      const res = await api.get("/admin/students", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -63,7 +64,7 @@ const Admin = () => {
 
   const deleteStudent = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/admin/students/${id}`, {
+      await api.delete(`/admin/students/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -24,64 +24,87 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setMessage({ text: "", type: "" });
+    e.preventDefault();
+    setMessage({ text: "", type: "" });
 
-  // Validate all fields are filled
-  for (let key in formData) {
-    if (!formData[key]) {
-      setMessage({ text: "All fields are required.", type: "error" });
-      return;
+    // Validate all fields are filled
+    for (let key in formData) {
+      if (!formData[key]) {
+        setMessage({ text: "All fields are required.", type: "error" });
+        return;
+      }
     }
-  }
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const response = await axios.post("http://localhost:5000/api/enroll", formData);
+    try {
+      // Replace localhost with your deployed backend URL:
+      const response = await axios.post(
+        "https://school-project-i40q.onrender.com/api/enroll",
+        formData
+      );
 
-    if (response.data.success) {
-      setMessage({ text: "Enrollment successful. Confirmation sent.", type: "success" });
-      setFormData({
-        fullName: "",
-        email: "",
-        dob: "",
-        phone: "",
-        class: "",
-        department: "",
-      });
-    } else {
-      setMessage({ text: response.data.message || "Submission failed.", type: "error" });
+      if (response.data.success) {
+        setMessage({
+          text: "Enrollment successful. Confirmation sent.",
+          type: "success",
+        });
+        setFormData({
+          fullName: "",
+          email: "",
+          dob: "",
+          phone: "",
+          class: "",
+          department: "",
+        });
+      } else {
+        setMessage({
+          text: response.data.message || "Submission failed.",
+          type: "error",
+        });
+      }
+    } catch (err) {
+      console.error("Enrollment error:", err.response?.data || err.message);
+
+      // Check if it's a duplicate email error from backend (status 409)
+      if (err.response?.status === 409) {
+        setMessage({
+          text:
+            err.response.data.message || "This email has already been used.",
+          type: "error",
+        });
+      } else {
+        setMessage({ text: "Server error. Please try again.", type: "error" });
+      }
     }
-  } catch (err) {
-    console.error("Enrollment error:", err.response?.data || err.message);
 
-    // Check if it's a duplicate email error from backend (status 409)
-    if (err.response?.status === 409) {
-      setMessage({ text: err.response.data.message || "This email has already been used.", type: "error" });
-    } else {
-      setMessage({ text: "Server error. Please try again.", type: "error" });
-    }
-  }
-
-  setLoading(false);
-};
-
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
         {/* Image Side */}
         <div className="hidden md:block">
-          <img src={signupImage} alt="Signup" className="h-full w-full object-cover" />
+          <img
+            src={signupImage}
+            alt="Signup"
+            className="h-full w-full object-cover"
+          />
         </div>
 
         {/* Form Side */}
         <div className="p-8 md:p-12 flex flex-col justify-center">
-          <h2 className="text-3xl font-bold text-blue-900 mb-6 text-center">Enrollment Form</h2>
+          <h2 className="text-3xl font-bold text-blue-900 mb-6 text-center">
+            Enrollment Form
+          </h2>
 
           {message.text && (
-            <p className={`mb-4 text-center ${message.type === "error" ? "text-red-600" : "text-green-600"}`}>
+            <p
+              className={`mb-4 text-center ${
+                message.type === "error" ? "text-red-600" : "text-green-600"
+              }`}
+            >
               {message.text}
             </p>
           )}
@@ -89,7 +112,12 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Full Name */}
             <div>
-              <label htmlFor="fullName" className="block text-gray-700 mb-1">Full Name</label>
+              <label
+                htmlFor="fullName"
+                className="block text-gray-700 mb-1"
+              >
+                Full Name
+              </label>
               <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2">
                 <User className="text-gray-500 mr-2" />
                 <input
@@ -107,7 +135,9 @@ const Login = () => {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-gray-700 mb-1">Email</label>
+              <label htmlFor="email" className="block text-gray-700 mb-1">
+                Email
+              </label>
               <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2">
                 <Mail className="text-gray-500 mr-2" />
                 <input
@@ -125,7 +155,9 @@ const Login = () => {
 
             {/* DOB */}
             <div>
-              <label htmlFor="dob" className="block text-gray-700 mb-1">Date of Birth</label>
+              <label htmlFor="dob" className="block text-gray-700 mb-1">
+                Date of Birth
+              </label>
               <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2">
                 <Calendar className="text-gray-500 mr-2" />
                 <input
@@ -142,7 +174,9 @@ const Login = () => {
 
             {/* Phone */}
             <div>
-              <label htmlFor="phone" className="block text-gray-700 mb-1">Phone</label>
+              <label htmlFor="phone" className="block text-gray-700 mb-1">
+                Phone
+              </label>
               <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2">
                 <Phone className="text-gray-500 mr-2" />
                 <input
@@ -160,7 +194,9 @@ const Login = () => {
 
             {/* Class */}
             <div>
-              <label htmlFor="class" className="block text-gray-700 mb-1">Class</label>
+              <label htmlFor="class" className="block text-gray-700 mb-1">
+                Class
+              </label>
               <select
                 id="class"
                 name="class"
@@ -181,7 +217,9 @@ const Login = () => {
 
             {/* Department */}
             <div>
-              <label htmlFor="department" className="block text-gray-700 mb-1">Department</label>
+              <label htmlFor="department" className="block text-gray-700 mb-1">
+                Department
+              </label>
               <select
                 id="department"
                 name="department"
