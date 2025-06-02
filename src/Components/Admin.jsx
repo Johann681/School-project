@@ -20,10 +20,14 @@ const Admin = () => {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/admin/login", {
-        username,
-        password,
-      });
+      const res = await axios.post(
+        "https://school-project-i40q.onrender.com/api/admin/login",
+        {
+          username,
+          password,
+        }
+      );
+
       const receivedToken = res.data.token;
       setToken(receivedToken);
       localStorage.setItem("adminToken", receivedToken);
@@ -83,7 +87,9 @@ const Admin = () => {
   if (!token) {
     return (
       <div className="p-6 max-w-md mx-auto mt-16 bg-gray-50 rounded-md shadow-md">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-900">Admin Login</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-900">
+          Admin Login
+        </h2>
         <input
           type="text"
           placeholder="Username"
@@ -117,7 +123,9 @@ const Admin = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto mt-12">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-semibold text-gray-900">Admin Dashboard</h2>
+        <h2 className="text-3xl font-semibold text-gray-900">
+          Admin Dashboard
+        </h2>
         <button
           onClick={() => {
             localStorage.removeItem("adminToken");
@@ -131,7 +139,9 @@ const Admin = () => {
         </button>
       </div>
 
-      <h3 className="text-xl font-semibold mb-4 text-gray-800">Enrolled Students</h3>
+      <h3 className="text-xl font-semibold mb-4 text-gray-800">
+        Enrolled Students
+      </h3>
 
       {fetchingStudents ? (
         <p className="text-gray-700">Loading students...</p>
