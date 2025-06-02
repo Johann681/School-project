@@ -4,26 +4,27 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const enrollRoutes = require("./routes/enroll");
-const adminRoutes = require("./routes/admin"); // ✅ Add this line
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ✅ CORS Middleware
 app.use(
   cors({
-    origin: "https://school-project-53km.vercel.app",
+    origin: ["https://www.greateraccessprivateschools.com"],
     credentials: true,
   })
 );
 
+// ✅ JSON Parsing Middleware
 app.use(express.json());
 
-// Routes
+// ✅ API Routes
 app.use("/api/enroll", enrollRoutes);
-app.use("/api/admin", adminRoutes); // ✅ Add this line
+app.use("/api/admin", adminRoutes);
 
-// MongoDB & Server Start
+// ✅ MongoDB Connection and Server Start
 const startServer = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
@@ -32,7 +33,9 @@ const startServer = async () => {
     });
     console.log("✅ MongoDB connected");
 
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on http://localhost:${PORT}`)
+    );
   } catch (err) {
     console.error("❌ MongoDB connection error:", err);
     process.exit(1);
