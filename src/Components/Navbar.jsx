@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Info, Mail, Menu as MenuIcon, X as XIcon } from 'lucide-react';
+import { Phone } from 'react-feather';
 
 const navItems = [
   { to: '/', label: 'Home', Icon: Home },
   { to: '/about', label: 'About', Icon: Info },
-  { to: '/login', label: 'Contact', Icon: Mail },
+  { to: '/New', label: 'Whats New', Icon: Mail },
+  { to: '/login', label: 'Contact', Icon: Phone },
 ];
 
 export default function Navbar() {
