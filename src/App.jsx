@@ -5,10 +5,13 @@ import About from './Components/About';
 import Footer from './Components/Footer';
 import Navbar from './Components/Navbar'; 
 import Login from './Components/Login';
-import Admin from './Components/Admin'; // ✅ Import the Admin dashboard
+import Admin from './Components/Admin'; 
 import NewSection from './Components/New';
+import Enroll from './Components/Enroll';
+import NotFound from './Components/NotFound';
+import ProtectedRoute from './Components/ProtectedRoute';
 
-// Wrapper to control layout based on route
+// ✅ Wrapper to control layout based on route
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
   const hideLayout = location.pathname.startsWith("/admin");
@@ -31,10 +34,21 @@ const App = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/New" element={<NewSection />} />
+          <Route path="/enroll" element={<Enroll />} />
+          <Route path="/new" element={<NewSection />} />
 
-          {/* Admin Route */}
-          <Route path="/admin" element={<Admin />} />
+          {/* Protected Admin Route */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* 404 Not Found Fallback */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </LayoutWrapper>
     </Router>

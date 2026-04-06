@@ -1,259 +1,126 @@
-import React, { useState } from "react";
-import { Mail, User, Calendar, Phone } from "react-feather";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { User, Lock, ArrowRight } from "lucide-react";
 import axios from "axios";
-import signupImage from "../assets/signup.jpg";
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    dob: "",
-    phone: "",
-    class: "",
-    department: "",
-  });
-
-  const [message, setMessage] = useState({ text: "", type: "" });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage({ text: "", type: "" });
-
-    for (let key in formData) {
-      if (!formData[key]) {
-        setMessage({ text: "All fields are required.", type: "error" });
-        return;
-      }
+  // ✅ Redirect to admin if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem("adminToken");
+    if (token) {
+      navigate("/admin");
     }
+  }, [navigate]);
 
+  const API_BASE_URL = window.location.hostname === "localhost" 
+    ? "http://localhost:5000/api" 
+    : "https://school-project-i40q.onrender.com/api";
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setError("Please enter both username and password.");
+      return;
+    }
     setLoading(true);
-    try {
-      const response = await axios.post(
-        "https://school-project-i40q.onrender.com/api/enroll",
-        formData
-      );
+    setError("");
 
-      if (response.data.success) {
-        setMessage({
-          text: "Enrollment successful. Confirmation sent.",
-          type: "success",
-        });
-        setFormData({
-          fullName: "",
-          email: "",
-          dob: "",
-          phone: "",
-          class: "",
-          department: "",
-        });
-      } else {
-        setMessage({
-          text: response.data.message || "Submission failed.",
-          type: "error",
-        });
+    try {
+      const res = await axios.post(`${API_BASE_URL}/admin/login`, {
+        username,
+        password,
+      });
+
+      if (res.data.success) {
+        localStorage.setItem("adminToken", res.data.token);
+        navigate("/admin");
       }
     } catch (err) {
-      console.error("Enrollment error:", err.response?.data || err.message);
-      if (err.response?.status === 409) {
-        setMessage({
-          text: err.response.data.message || "This email has already been used.",
-          type: "error",
-        });
-      } else {
-        setMessage({ text: "Server error. Please try again.", type: "error" });
-      }
+      setError(err.response?.data?.message || "Invalid authentication credentials. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="max-w-3xl bg-white rounded-xl shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Image Side */}
-        <div className="hidden md:block">
-          <img
-            src={signupImage}
-            alt="Signup"
-            className="h-full w-full object-cover"
-          />
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="text-blue-700 w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 font-sans">Admin Portal</h2>
+          <p className="text-gray-500 mt-2 text-sm">Secure access for school administrators</p>
         </div>
 
-        {/* Form Side */}
-        <div className="p-6 md:p-10 flex flex-col justify-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-blue-900 mb-5 text-center">
-            Enrollment Form
-          </h2>
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-md animate-pulse">
+            {error}
+          </div>
+        )}
 
-          {message.text && (
-            <p
-              className={`mb-4 text-center text-sm md:text-base ${
-                message.type === "error" ? "text-red-600" : "text-green-600"
-              }`}
-            >
-              {message.text}
-            </p>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
-            {/* Full Name */}
-            <div>
-              <label
-                htmlFor="fullName"
-                className="block text-gray-700 mb-1 text-sm md:text-base"
-              >
-                Full Name
-              </label>
-              <div className="flex items-center border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2">
-                <User className="text-gray-500 mr-2" size={18} />
-                <input
-                  type="text"
-                  id="fullName"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  placeholder="Your full name"
-                  className="w-full outline-none text-sm md:text-base"
-                  required
-                />
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Username
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <User className="h-5 w-5 text-gray-400" />
               </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-gray-700 mb-1 text-sm md:text-base"
-              >
-                Email
-              </label>
-              <div className="flex items-center border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2">
-                <Mail className="text-gray-500 mr-2" size={18} />
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  className="w-full outline-none text-sm md:text-base"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* DOB */}
-            <div>
-              <label
-                htmlFor="dob"
-                className="block text-gray-700 mb-1 text-sm md:text-base"
-              >
-                Date of Birth
-              </label>
-              <div className="flex items-center border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2">
-                <Calendar className="text-gray-500 mr-2" size={18} />
-                <input
-                  type="date"
-                  id="dob"
-                  name="dob"
-                  value={formData.dob}
-                  onChange={handleChange}
-                  className="w-full outline-none text-sm md:text-base"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label
-                htmlFor="phone"
-                className="block text-gray-700 mb-1 text-sm md:text-base"
-              >
-                Phone
-              </label>
-              <div className="flex items-center border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2">
-                <Phone className="text-gray-500 mr-2" size={18} />
-                <input
-                  type="text"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="e.g. +234 800 000 0000"
-                  className="w-full outline-none text-sm md:text-base"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Class */}
-            <div>
-              <label
-                htmlFor="class"
-                className="block text-gray-700 mb-1 text-sm md:text-base"
-              >
-                Class
-              </label>
-              <select
-                id="class"
-                name="class"
-                value={formData.class}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm md:text-base"
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                placeholder="Enter admin username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
                 required
-              >
-                <option value="">Select Class</option>
-                <option value="JSS1">JSS1</option>
-                <option value="JSS2">JSS2</option>
-                <option value="JSS3">JSS3</option>
-                <option value="SS1">SS1</option>
-                <option value="SS2">SS2</option>
-                <option value="SS3">SS3</option>
-              </select>
+              />
             </div>
+          </div>
 
-            {/* Department */}
-            <div>
-              <label
-                htmlFor="department"
-                className="block text-gray-700 mb-1 text-sm md:text-base"
-              >
-                Department
-              </label>
-              <select
-                id="department"
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm md:text-base"
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="password"
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 required
-              >
-                <option value="">Select Department</option>
-                <option value="Science">Science</option>
-                <option value="Art">Art</option>
-                <option value="Commercial">Commercial</option>
-              </select>
+              />
             </div>
+          </div>
 
-            {/* Submit Button */}
-            <div className="text-center mt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-600 text-white py-2.5 px-7 rounded-full font-semibold hover:bg-blue-700 transition duration-300 disabled:opacity-60 text-sm md:text-base"
-              >
-                {loading ? "Submitting..." : "Submit"}
-              </button>
-            </div>
-          </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            {loading ? "Verifying..." : "Sign In to Dashboard"}
+            {!loading && <ArrowRight className="w-4 h-4 text-gray-400" />}
+          </button>
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+          <p className="text-xs text-gray-400 uppercase tracking-widest font-medium mb-2">Notice</p>
+          <p className="text-[11px] text-gray-500 px-4">
+            Unauthorized access to this portal is strictly prohibited and subject to monitoring.
+          </p>
         </div>
       </div>
     </div>
