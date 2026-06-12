@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5000;
 // ✅ CORS Middleware
 app.use(
   cors({
-    origin: ["https://www.greateraccessprivateschools.com"],
+    origin: ["https://www.greateraccessprivateschools.com", "http://localhost:5173"],
     credentials: true,
   })
 );
