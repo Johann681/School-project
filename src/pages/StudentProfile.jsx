@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ClipboardList, GraduationCap, Send, Star, Compass } from "lucide-react";
+import { BookOpen, ClipboardList, GraduationCap, Send, Star, Compass, X, AlertTriangle, Maximize2 } from "lucide-react";
 import api from "../api/axiosClient";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Panel from "../components/dashboard/Panel";
@@ -8,6 +9,54 @@ import Badge from "../components/dashboard/Badge";
 import TabGroup from "../components/dashboard/TabGroup";
 import EmptyState from "../components/dashboard/EmptyState";
 import Toast from "../components/dashboard/Toast";
+
+// Isolated component for individual assignments to keep typing snappy and fluid
+const AssignmentItem = ({ courseId, assignment, initialValue, onUpdateForm, onTriggerReview, onOpenWorkspace }) => {
+  const currentText = initialValue || "";
+  const wordCount = currentText.trim() === "" ? 0 : currentText.trim().split(/\s+/).length;
+
+  const handleSubmitAttempt = (e) => {
+    e.preventDefault();
+    if (!currentText.trim()) return;
+    onTriggerReview(courseId, assignment.title, currentText);
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 transition-all hover:border-slate-300">
+      <p className="font-semibold text-slate-900">{assignment.title}</p>
+      <p className="mt-1 text-sm text-slate-600 leading-relaxed">{assignment.description}</p>
+      
+      <form onSubmit={handleSubmitAttempt} className="mt-4">
+        <div className="relative">
+          <textarea
+            placeholder="Type your submission here... (Or click the expand icon on the right for a massive writing space)"
+            value={currentText}
+            onChange={(e) => onUpdateForm(`${courseId}-${assignment.title}`, e.target.value)}
+            className="w-full rounded-xl border border-slate-200 p-3 pr-10 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition"
+            rows={4}
+            required
+          />
+          {/* Expand Workspace Button */}
+          <button
+            type="button"
+            onClick={() => onOpenWorkspace(courseId, assignment.title, currentText)}
+            className="absolute right-3 top-3 p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition"
+            title="Open expanded note subpage"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </button>
+          
+          <span className="absolute bottom-3 right-3 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-medium pointer-events-none">
+            {wordCount} words
+          </span>
+        </div>
+        <button type="submit" className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 transition">
+          <Send className="h-3 w-3" /> Review & Submit
+        </button>
+      </form>
+    </div>
+  );
+};
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -26,6 +75,11 @@ const StudentProfile = () => {
   const [activeTab, setActiveTab] = useState("registered");
   const [status, setStatus] = useState({ type: "", message: "" });
   const [activeSubmissions, setActiveSubmissions] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal tracking states
+  const [activeModalSubmission, setActiveModalSubmission] = useState(null);
+  const [expandedWorkspace, setExpandedWorkspace] = useState(null);
 
   const authSession = useMemo(() => JSON.parse(localStorage.getItem("lmsAuth") || "null"), []);
   const token = authSession?.token;
@@ -67,19 +121,50 @@ const StudentProfile = () => {
     }
   };
 
-  const handleSubmitAssignment = async (e, courseId, assignmentTitle) => {
-    e.preventDefault();
-    const submissionData = submissionForms[`${courseId}-${assignmentTitle}`];
-    if (!submissionData) return;
+  // Triggers final submission summary sheet
+  const handleTriggerReview = (courseId, assignmentTitle, textContent) => {
+    setActiveModalSubmission({ courseId, assignmentTitle, textContent });
+  };
+
+  // Opens big subpage full-screen editor setup
+  const handleOpenWorkspace = (courseId, assignmentTitle, currentText) => {
+    setExpandedWorkspace({ courseId, assignmentTitle, textContent: currentText });
+  };
+
+  // Saves data back from big panel into main form states
+  const handleSaveWorkspaceChanges = () => {
+    if (!expandedWorkspace) return;
+    const { courseId, assignmentTitle, textContent } = expandedWorkspace;
+    setSubmissionForms(prev => ({ ...prev, [`${courseId}-${assignmentTitle}`]: textContent }));
+    setExpandedWorkspace(null);
+  };
+
+  const handleConfirmFinalSubmission = async () => {
+    if (!activeModalSubmission || isSubmitting) return;
+    setIsSubmitting(true);
+
+    const { courseId, assignmentTitle, textContent } = activeModalSubmission;
 
     try {
-      await api.post("/student/submit-assignment", { courseId, assignmentTitle, submissionData });
-      showStatus("success", "Assignment submitted successfully.");
-      setSubmissionForms({ ...submissionForms, [`${courseId}-${assignmentTitle}`]: "" });
+      await api.post("/student/submit-assignment", { 
+        courseId, 
+        assignmentTitle, 
+        submissionData: textContent 
+      });
+      showStatus("success", "Assignment finalized and submitted successfully!");
+      
+      setSubmissionForms(prev => ({ ...prev, [`${courseId}-${assignmentTitle}`]: "" }));
+      setActiveModalSubmission(null);
       fetchDashboard();
     } catch (err) {
       showStatus("error", err.response?.data?.message || "Failed to submit assignment.");
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleUpdateForm = (key, val) => {
+    setSubmissionForms(prev => ({ ...prev, [key]: val }));
   };
 
   const handleLogout = () => {
@@ -177,28 +262,15 @@ const StudentProfile = () => {
                     {course.assignments?.length > 0 ? (
                       <div className="space-y-3">
                         {course.assignments.map((assignment, idx) => (
-                          <div key={idx} className="rounded-lg border border-slate-200 bg-white p-4">
-                            <p className="font-semibold text-slate-900">{assignment.title}</p>
-                            <p className="mt-1 text-sm text-slate-600">{assignment.description}</p>
-                            <form onSubmit={(e) => handleSubmitAssignment(e, course._id, assignment.title)} className="mt-3">
-                              <textarea
-                                placeholder="Type your submission here..."
-                                value={submissionForms[`${course._id}-${assignment.title}`] || ""}
-                                onChange={(e) =>
-                                  setSubmissionForms({
-                                    ...submissionForms,
-                                    [`${course._id}-${assignment.title}`]: e.target.value,
-                                  })
-                                }
-                                className="dash-input"
-                                rows={3}
-                                required
-                              />
-                              <button type="submit" className="dash-btn-primary mt-2 text-xs">
-                                Submit Assignment
-                              </button>
-                            </form>
-                          </div>
+                          <AssignmentItem
+                            key={idx}
+                            courseId={course._id}
+                            assignment={assignment}
+                            initialValue={submissionForms[`${course._id}-${assignment.title}`]}
+                            onUpdateForm={handleUpdateForm}
+                            onTriggerReview={handleTriggerReview}
+                            onOpenWorkspace={handleOpenWorkspace}
+                          />
                         ))}
                       </div>
                     ) : (
@@ -284,6 +356,108 @@ const StudentProfile = () => {
             </div>
           )}
         </Panel>
+      )}
+
+      {/* Expanded Subpage Text Editor / Notepad Overlay */}
+      {expandedWorkspace && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl flex flex-col h-[85vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Assignment Workspace</h3>
+                <p className="text-xs text-slate-500">Task: {expandedWorkspace.assignmentTitle}</p>
+              </div>
+              <button 
+                onClick={() => setExpandedWorkspace(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 my-4">
+              <textarea
+                value={expandedWorkspace.textContent}
+                onChange={(e) => setExpandedWorkspace({ ...expandedWorkspace, textContent: e.target.value })}
+                placeholder="Type your deep answers, paragraphs, code submission or reports here..."
+                className="w-full h-full p-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono text-sm resize-none leading-relaxed text-slate-800"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setExpandedWorkspace(null)}
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+              >
+                Discard Changes
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveWorkspaceChanges}
+                className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 transition"
+              >
+                Apply Text to Input
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Confirmation Modal Overlay */}
+      {activeModalSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-100 bg-white p-6 shadow-xl animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Review Your Submission</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Assignment: {activeModalSubmission.assignmentTitle}</p>
+              </div>
+              <button 
+                onClick={() => setActiveModalSubmission(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="my-5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                Your Answer Content
+              </label>
+              <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                {activeModalSubmission.textContent}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-200 p-3.5 mb-6 text-sm text-amber-800">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+              <div>
+                <p className="font-semibold">Ready to send?</p>
+                <p className="text-xs text-amber-700 mt-0.5">Once you click submit, your entry will be officially marked for grading. You cannot make any changes or edits after this point.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setActiveModalSubmission(null)}
+                disabled={isSubmitting}
+                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50"
+              >
+                Go Back & Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFinalSubmission}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition disabled:bg-indigo-400"
+              >
+                {isSubmitting ? "Submitting..." : "Confirm Final Submission"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Toast message={status.type === "success" ? status.message : ""} type="success" />

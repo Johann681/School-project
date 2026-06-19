@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,6 +10,7 @@ import {
   BarChart3,
   FileText,
   GraduationCap,
+  Maximize2,
 } from "lucide-react";
 import api from "../api/axiosClient";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
@@ -41,6 +43,10 @@ const TeacherDashboard = () => {
   const [deleteCourse, setDeleteCourse] = useState(null);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // State to manage the large instruction pad subpage/modal
+  const [isNotePadOpen, setIsNotePadOpen] = useState(false);
+  const [tempDescription, setTempDescription] = useState("");
 
   const authSession = useMemo(() => JSON.parse(localStorage.getItem("lmsAuth") || "null"), []);
   const token = authSession?.token;
@@ -187,6 +193,18 @@ const TeacherDashboard = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Opens the dedicated big text subpage/editor
+  const openNotePad = () => {
+    setTempDescription(assignmentForm.description);
+    setIsNotePadOpen(true);
+  };
+
+  // Saves from the big pad back to the main hidden form state
+  const saveNotePadChanges = () => {
+    setAssignmentForm((prev) => ({ ...prev, description: tempDescription }));
+    setIsNotePadOpen(false);
   };
 
   const openGradeModal = (submission) => {
@@ -418,14 +436,27 @@ const TeacherDashboard = () => {
                         required
                         className="dash-input"
                       />
-                      <textarea
-                        value={assignmentForm.description}
-                        onChange={(e) => setAssignmentForm({ ...assignmentForm, description: e.target.value })}
-                        placeholder="Instructions"
-                        required
-                        rows={4}
-                        className="dash-input"
-                      />
+                      
+                      {/* Subpage Trigger area instead of a basic squished textarea */}
+                      <div className="relative">
+                        <textarea
+                          value={assignmentForm.description}
+                          onChange={(e) => setAssignmentForm({ ...assignmentForm, description: e.target.value })}
+                          placeholder="Instructions (Click the expand button on the right to type a long note/rubric comfortably)"
+                          required
+                          rows={3}
+                          className="dash-input pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={openNotePad}
+                          className="absolute right-2.5 top-2.5 p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition"
+                          title="Open expanded note subpage"
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
                       <button type="submit" disabled={actionLoading} className="dash-btn-primary w-full">
                         Add Assignment
                       </button>
@@ -435,7 +466,7 @@ const TeacherDashboard = () => {
                         {activeCourse.assignments.map((item, idx) => (
                           <li key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
                             <p className="font-semibold text-slate-900">{item.title}</p>
-                            <p className="mt-1 text-slate-600">{item.description}</p>
+                            <p className="mt-1 text-slate-600 whitespace-pre-wrap">{item.description}</p>
                           </li>
                         ))}
                       </ul>
@@ -546,6 +577,7 @@ const TeacherDashboard = () => {
         </Panel>
       </div>
 
+      {/* Pending Submissions Block */}
       <Panel
         title="Pending Submissions"
         description="Grade submissions to record results and remove them from the active queue."
@@ -596,6 +628,47 @@ const TeacherDashboard = () => {
           </div>
         )}
       </Panel>
+
+      {/* Dynamic Instruction Notepad Subpage / Full overlay overlay */}
+      {isNotePadOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl flex flex-col h-[80vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Extended Assignment Instructions</h3>
+                <p className="text-xs text-slate-500">Draft extensive task explanations, reading targets, or evaluation rubrics below.</p>
+              </div>
+              <Badge variant="info">{activeCourse?.code}</Badge>
+            </div>
+
+            <div className="flex-1 my-4">
+              <textarea
+                value={tempDescription}
+                onChange={(e) => setTempDescription(e.target.value)}
+                placeholder="Type your deep instructions, questions, resources, or code outlines here... (Supports multi-line spacing cleanly)"
+                className="w-full h-full p-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono text-sm resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsNotePadOpen(false)}
+                className="dash-btn-secondary text-xs px-4 py-2"
+              >
+                Discard Changes
+              </button>
+              <button
+                type="button"
+                onClick={saveNotePadChanges}
+                className="dash-btn-primary text-xs px-5 py-2"
+              >
+                Apply Text to Assignment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {grading.open && grading.record && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
