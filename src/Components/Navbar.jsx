@@ -9,6 +9,7 @@ const navItems = [
   { to: '/about', label: 'Our Story', Icon: Info },
   { to: '/new', label: "What's New", Icon: Mail },
   { to: '/enroll', label: 'Enroll Now', Icon: UserCheck },
+  { to: '/login', label: 'Sign In', Icon: UserCheck },
 ];
 
 export default function Navbar() {
@@ -80,16 +81,6 @@ export default function Navbar() {
               </Link>
             </li>
           ))}
-          {/* Admin Login Shortcut - subtle */}
-          <li className="border-t border-blue-800 md:border-none">
-             <Link 
-               to="/login" 
-               className="flex items-center px-6 py-4 md:px-3 md:py-1.5 text-[10px] uppercase tracking-widest text-blue-300 hover:text-white transition-colors"
-               onClick={() => setOpen(false)}
-             >
-               Admin
-             </Link>
-          </li>
         </ul>
       </div>
     </nav>

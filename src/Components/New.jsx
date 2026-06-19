@@ -94,7 +94,7 @@ const NewSection = () => {
             whileInView="show"
             variants={fadeInUp}
             viewport={{ once: true }}
-            className="text-4xl sm:text-6xl lg:text-7xl font-black leading-[1.05] mb-8 tracking-tight max-w-4xl"
+            className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 tracking-tight max-w-4xl"
           >
             Celebrating Excellence: A New Chapter of <span className="text-blue-700 italic">Achievement</span>
           </motion.h1>
@@ -106,7 +106,7 @@ const NewSection = () => {
             whileInView="show"
             variants={fadeInUp}
             viewport={{ once: true }}
-            className="text-base sm:text-xl text-slate-600 max-w-3xl leading-relaxed font-light"
+            className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed font-light"
           >
             The Graduation and Certification Ceremony at Greater Access
             Private Schools remains a significant milestone, representing a decade of discipline, 
@@ -130,21 +130,21 @@ const NewSection = () => {
           >
             {ceremonySections.map((item, index) => (
               <motion.div key={index} variants={fadeInUp} className="group cursor-default">
-                <div className="relative overflow-hidden rounded-[2rem] shadow-xl bg-slate-100 aspect-[4/5] mb-6">
+                <div className="relative overflow-hidden rounded-2xl shadow-md bg-slate-100 aspect-video mb-5">
                   <img
                     src={item.img}
                     alt={item.title}
-                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute top-4 left-4">
-                     <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-blue-700 shadow-lg">
+                  <div className="absolute top-3 left-3">
+                     <span className="bg-white/90 backdrop-blur px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide text-blue-700 shadow-sm">
                        {item.badge}
                      </span>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
 
-                <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-700 transition-colors flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-700 transition-colors flex items-center justify-between">
                   {item.title}
                   <ChevronRight className="w-4 h-4 text-blue-700 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                 </h3>
@@ -213,15 +213,15 @@ const NewSection = () => {
             viewport={{ once: true }}
             className="lg:col-span-7"
           >
-            <div className="grid grid-cols-2 gap-6 relative">
-              <motion.div variants={fadeInUp} className="space-y-6">
-                <img src={Image5} className="rounded-3xl shadow-xl h-80 w-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-700" />
-                <img src={Image6} className="rounded-3xl shadow-xl h-60 w-full object-cover" />
+            <div className="grid grid-cols-2 gap-4 relative">
+              <motion.div variants={fadeInUp} className="space-y-4">
+                <img src={Image5} className="rounded-2xl shadow-md h-56 w-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-500" />
+                <img src={Image6} className="rounded-2xl shadow-md h-40 w-full object-cover" />
               </motion.div>
 
-              <motion.div variants={fadeInUp} className="pt-12 space-y-6">
-                <img src={Image7} className="rounded-3xl shadow-xl h-full w-full object-cover" />
-                <div className="absolute -bottom-8 -right-8 w-64 h-64 bg-blue-100/50 rounded-full blur-3xl -z-10" />
+              <motion.div variants={fadeInUp} className="pt-8 space-y-4">
+                <img src={Image7} className="rounded-2xl shadow-md h-64 w-full object-cover" />
+                <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-blue-100/50 rounded-full blur-2xl -z-10" />
               </motion.div>
             </div>
           </motion.div>
@@ -236,31 +236,32 @@ const NewSection = () => {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
-            className="rounded-[3rem] overflow-hidden shadow-2xl bg-slate-900 text-white relative"
+            className="rounded-[2rem] overflow-hidden shadow-lg bg-slate-900 text-white relative"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2">
+            <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-8 p-8 sm:p-12">
 
               {/* IMAGE SIDE */}
-              <div className="h-[400px] lg:h-full overflow-hidden relative group">
-                <img
-                  src={Image8}
-                  alt="Greater Access Principal/Proprietor"
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-slate-900/20 group-hover:bg-transparent transition-all duration-500" />
+              <div className="lg:col-span-4 flex justify-center">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-full overflow-hidden border-4 border-slate-800 shadow-xl relative group">
+                  <img
+                    src={Image8}
+                    alt="Greater Access Principal/Proprietor"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                </div>
               </div>
 
               {/* CONTENT SIDE */}
-              <div className="p-12 sm:p-20 flex flex-col justify-center relative overflow-hidden">
-                <span className="inline-block text-blue-400 font-black tracking-[0.3em] text-[10px] uppercase mb-6 bg-blue-900/50 border border-blue-800 px-4 py-2 rounded-full w-fit">
+              <div className="lg:col-span-8 flex flex-col justify-center relative">
+                <span className="inline-block text-blue-400 font-bold tracking-[0.2em] text-xs uppercase mb-4 w-fit">
                   Proprietor's Mandate
                 </span>
 
-                <h2 className="text-4xl sm:text-5xl font-black mb-8 leading-tight tracking-tight">Empowering the Next Generation of <span className="text-blue-400">Leaders</span></h2>
+                <h2 className="text-3xl sm:text-4xl font-black mb-6 leading-tight tracking-tight">Empowering the Next Generation of <span className="text-blue-400">Leaders</span></h2>
 
                 <Divider />
 
-                <blockquote className="text-xl sm:text-2xl font-light italic text-slate-300 leading-relaxed mb-10 pl-8 border-l-4 border-blue-500">
+                <blockquote className="text-lg sm:text-xl font-light italic text-slate-300 leading-relaxed mb-8 pl-6 border-l-4 border-blue-500">
                   "At Greater Access, we operate with a singular purpose: to raise visionaries who will navigate and positively impact the complex global landscape."
                 </blockquote>
 

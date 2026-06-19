@@ -3,18 +3,22 @@ import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-route
 import Home from './Components/Home';
 import About from './Components/About';
 import Footer from './Components/Footer';
-import Navbar from './Components/Navbar'; 
-import Login from './Components/Login';
-import Admin from './Components/Admin'; 
+import Navbar from './Components/Navbar';
+import Login from './pages/Login';
+import AdminLogin from './pages/AdminLogin';
+import TeacherLogin from './pages/TeacherLogin';
+import StudentLogin from './pages/StudentLogin';
+import AdminPanel from './Components/AdminPanel';
+import TeacherDashboard from './pages/TeacherDashboard';
+import StudentProfile from './pages/StudentProfile';
 import NewSection from './Components/New';
 import Enroll from './Components/Enroll';
 import NotFound from './Components/NotFound';
 import ProtectedRoute from './Components/ProtectedRoute';
 
-// ✅ Wrapper to control layout based on route
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
-  const hideLayout = location.pathname.startsWith("/admin");
+  const hideLayout = ["/admin", "/teacher", "/student", "/login", "/admin-login", "/teacher-login", "/student-login"].some((path) => location.pathname.startsWith(path));
 
   return (
     <>
@@ -34,17 +38,36 @@ const App = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/teacher-login" element={<TeacherLogin />} />
+          <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/enroll" element={<Enroll />} />
           <Route path="/new" element={<NewSection />} />
 
-          {/* Protected Admin Route */}
-          <Route 
-            path="/admin" 
+          {/* Protected Admin / Teacher / Student Routes */}
+          <Route
+            path="/admin"
             element={
-              <ProtectedRoute>
-                <Admin />
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminPanel />
               </ProtectedRoute>
-            } 
+            }
+          />
+          <Route
+            path="/teacher"
+            element={
+              <ProtectedRoute allowedRoles={["teacher"]}>
+                <TeacherDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student"
+            element={
+              <ProtectedRoute allowedRoles={["student"]}>
+                <StudentProfile />
+              </ProtectedRoute>
+            }
           />
 
           {/* 404 Not Found Fallback */}
