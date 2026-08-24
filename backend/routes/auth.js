@@ -26,10 +26,45 @@ const isStrongPassword = (password) => {
   );
 };
 
+const sanitizeEmail = (value) => sanitize(value).toLowerCase();
+
+router.post("/parent/signup", async (req, res) => {
+  try {
+    const email = sanitizeEmail(req.body.email);
+    const studentCode = sanitize(req.body.studentCode).toUpperCase();
+    const password = sanitize(req.body.password);
+    const fullName = sanitize(req.body.fullName || "Parent");
+
+    if (!email || !studentCode || !password) {
+      return res.status(400).json({ success: false, message: "Email, student code, and password are required." });
+    }
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters and include uppercase, lowercase, and a number." });
+    }
+
+    const student = await User.findOne({ role: "STUDENT", studentCode, isActivated: true }).select("_id");
+    if (!student) return res.status(404).json({ success: false, message: "Student code is invalid or the student is not active." });
+
+    let parent = await User.findOne({ email });
+    if (parent) {
+      if (parent.role !== "PARENT") return res.status(409).json({ success: false, message: "That email belongs to another portal account." });
+      if (!parent.linkedStudents.some((id) => id.equals(student._id))) parent.linkedStudents.push(student._id);
+      await parent.save();
+    } else {
+      parent = await User.create({ fullName, email, password, role: "PARENT", isActivated: true, linkedStudents: [student._id] });
+    }
+
+    return res.status(201).json({ success: true, message: "Parent account linked successfully.", email: parent.email, role: parent.role });
+  } catch (err) {
+    console.error("Parent signup error:", err);
+    return res.status(500).json({ success: false, message: "Unable to create or link the parent account." });
+  }
+});
+
 router.get("/me", requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
-      .select("name email role isActivated")
+      .select("fullName email role isActivated")
       .lean();
 
     if (!user || !user.isActivated) {
@@ -39,7 +74,7 @@ router.get("/me", requireAuth, async (req, res) => {
     return res.json({
       success: true,
       user: {
-        name: user.name,
+        name: user.fullName,
         email: user.email,
         role: user.role,
       },
@@ -70,7 +105,7 @@ router.post("/activate-student", async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email, passkey, isActivated: false }).select("name email role password passkey");
+    const user = await User.findOne({ email, passkey, isActivated: false }).select("fullName email role password passkey");
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -89,7 +124,7 @@ router.post("/activate-student", async (req, res) => {
       message: "Activation complete. Your student account is ready.",
       token,
       role: user.role,
-      name: user.name,
+      name: user.fullName,
       email: user.email,
     });
   } catch (err) {
@@ -113,7 +148,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email }).select("name email role password isActivated");
+    const user = await User.findOne({ email }).select("fullName email role password isActivated");
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -142,7 +177,7 @@ router.post("/login", async (req, res) => {
       message: "Login successful.",
       token,
       role: user.role,
-      name: user.name,
+      name: user.fullName,
       email: user.email,
     });
   } catch (err) {

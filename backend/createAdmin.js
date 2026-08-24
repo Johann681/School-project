@@ -32,10 +32,10 @@ async function createAdmin() {
     }
 
     const admin = new User({
-      name: adminName,
-      email: adminEmail,
+      fullName: adminName,
+      email: adminEmail.toLowerCase(),
       password: adminPassword,
-      role: "admin",
+      role: "ADMIN",
       isActivated: true,
     });
 

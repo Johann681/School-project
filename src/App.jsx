@@ -8,17 +8,39 @@ import Login from './pages/Login';
 import AdminLogin from './pages/AdminLogin';
 import TeacherLogin from './pages/TeacherLogin';
 import StudentLogin from './pages/StudentLogin';
-import AdminPanel from './Components/AdminPanel';
+import ParentLogin from './pages/ParentLogin';
+import ParentSignup from './pages/ParentSignup';
+import ParentDashboard from './pages/ParentDashboard';
+import AdminPanel from './Components/AdminWorkspace';
 import TeacherDashboard from './pages/TeacherDashboard';
+import TeacherTimetable from './pages/TeacherTimetable';
+import TeacherAttendance from './pages/TeacherAttendance';
 import StudentProfile from './pages/StudentProfile';
+import StudentTimetable from './pages/StudentTimetable';
 import NewSection from './Components/New';
 import Enroll from './Components/Enroll';
 import NotFound from './Components/NotFound';
+import AdminAuditLogs from './pages/AdminAuditLogs';
 import ProtectedRoute from './Components/ProtectedRoute';
 
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
-  const hideLayout = ["/admin", "/teacher", "/student", "/login", "/admin-login", "/teacher-login", "/student-login"].some((path) => location.pathname.startsWith(path));
+  const hideLayout = [
+    "/admin",
+    "/teacher",
+    "/student",
+    "/parent",
+    "/login",
+    "/admin-login",
+    "/teacher-login",
+    "/student-login",
+    "/parent-login",
+    "/parent-signup",
+    "/teacher-timetable",
+    "/teacher-attendance",
+    "/student-timetable",
+    "/admin/audit",
+  ].some((path) => location.pathname.startsWith(path));
 
   return (
     <>
@@ -48,7 +70,7 @@ const App = () => {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
                 <AdminPanel />
               </ProtectedRoute>
             }
@@ -56,16 +78,44 @@ const App = () => {
           <Route
             path="/teacher"
             element={
-              <ProtectedRoute allowedRoles={["teacher"]}>
+              <ProtectedRoute allowedRoles={["TEACHER"]}>
                 <TeacherDashboard />
               </ProtectedRoute>
             }
           />
+          <Route path="/teacher-timetable" element={<ProtectedRoute allowedRoles={["TEACHER"]}><TeacherTimetable /></ProtectedRoute>} />
+          <Route path="/teacher-attendance" element={<ProtectedRoute allowedRoles={["TEACHER"]}><TeacherAttendance /></ProtectedRoute>} />
           <Route
             path="/student"
             element={
-              <ProtectedRoute allowedRoles={["student"]}>
+              <ProtectedRoute allowedRoles={["STUDENT"]}>
                 <StudentProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student-timetable"
+            element={
+              <ProtectedRoute allowedRoles={["STUDENT"]}>
+                <StudentTimetable />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/parent-login" element={<ParentLogin />} />
+          <Route path="/parent-signup" element={<ParentSignup />} />
+          <Route
+            path="/parent"
+            element={
+              <ProtectedRoute allowedRoles={["PARENT"]}>
+                <ParentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <AdminAuditLogs />
               </ProtectedRoute>
             }
           />

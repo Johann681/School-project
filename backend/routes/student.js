@@ -1,13 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const Course = require("../models/Course");
+const TimetableSlot = require("../models/TimetableSlot");
 const Submission = require("../models/Submission");
 const Performance = require("../models/Performance");
 const EnrollmentRequest = require("../models/EnrollmentRequest");
 const User = require("../models/User");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
-router.use(requireAuth, requireRole("student"));
+router.use(requireAuth, requireRole("STUDENT"));
+
+router.use((req, res, next) => {
+  if (req.path === "/available-courses" || req.path.startsWith("/request-enrollment/")) {
+    return res.status(403).json({ success: false, message: "Course registration is managed by the administrator." });
+  }
+  next();
+});
 
 router.get("/dashboard", async (req, res) => {
   try {
@@ -66,8 +74,9 @@ router.get("/available-courses", async (req, res) => {
     // Find courses the student is NOT enrolled in
     const availableCourses = await Course.find({ _id: { $nin: enrolledCourseIds } })
       .lean()
-      .select("title code teacherId")
-      .populate("teacherId", "name")
+      .select("title code teacherId teachers")
+      .populate("teacherId", "fullName email")
+      .populate("teachers", "fullName email")
       .sort({ title: 1 });
 
     // Find pending requests for this student so frontend can disable "Request" buttons
@@ -109,7 +118,7 @@ router.post("/request-enrollment/:courseId", async (req, res) => {
       }
       // Re-request after rejection — reset the existing record to pending
       existingRequest.status = "pending";
-      existingRequest.teacherId = course.teacherId;
+      existingRequest.teacherId = course.teachers?.[0] || course.teacherId;
       await existingRequest.save();
       return res.json({ success: true, message: "Enrollment request re-submitted." });
     }
@@ -117,7 +126,7 @@ router.post("/request-enrollment/:courseId", async (req, res) => {
     await EnrollmentRequest.create({
       studentId: req.user._id,
       courseId,
-      teacherId: course.teacherId,
+      teacherId: course.teachers?.[0] || course.teacherId,
       status: "pending"
     });
 
@@ -194,6 +203,35 @@ router.post("/submit-assignment", async (req, res) => {
   } catch (err) {
     console.error("Submit assignment error:", err);
     res.status(500).json({ success: false, message: "Unable to submit assignment." });
+  }
+});
+
+router.get("/timetable", async (req, res) => {
+  try {
+    const student = await User.findById(req.user._id)
+      .select("enrolledCourses studentClass")
+      .lean();
+
+    const slots = await TimetableSlot.find({ class: student?.studentClass })
+      .populate({ path: "class", select: "name level section" })
+      .populate({ path: "subjectAssignment", populate: [{ path: "subject", select: "name code" }, { path: "teacher", select: "fullName email" }] })
+      .sort({ day: 1, period: 1 })
+      .lean();
+    const timetable = slots.map((slot) => ({
+      subject: slot.subjectAssignment?.subject?.name || "Free Period",
+      className: slot.class?.name || "Assigned class",
+      teacherName: slot.subjectAssignment?.teacher?.fullName || "",
+      day: slot.day,
+      period: `Period ${slot.period}`,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      room: "Room TBD",
+    }));
+
+    return res.json({ success: true, timetable });
+  } catch (err) {
+    console.error("Student timetable error:", err);
+    return res.status(500).json({ success: false, message: "Unable to load timetable." });
   }
 });
 

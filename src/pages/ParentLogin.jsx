@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ArrowLeft, UserCheck, ShieldCheck } from "lucide-react";
 import api, { setAuthSession } from "../api/axiosClient";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
 
-const AdminLogin = () => {
+const ParentLogin = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [status, setStatus] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
@@ -22,16 +22,14 @@ const AdminLogin = () => {
       const response = await api.post("/auth/login", formData);
       const { token, role, name, email } = response.data;
 
-      if ((role || "").toString().toUpperCase() !== "ADMIN") {
-        setStatus({
-          type: "error",
-          message: "This account is not authorized for admin access.",
-        });
+      if ((role || "").toString().toUpperCase() !== "PARENT") {
+        setStatus({ type: "error", message: "This account is not authorized for parent access." });
         setLoading(false);
         return;
       }
+
       setAuthSession({ token, role: (role || "").toString().toUpperCase(), name, email });
-      navigate("/admin");
+      navigate("/parent");
     } catch (err) {
       setStatus({
         type: "error",
@@ -45,17 +43,17 @@ const AdminLogin = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-md">
-        <Link to="/login" className="inline-flex items-center text-blue-700 font-bold mb-8 hover:underline">
+        <Link to="/login" className="inline-flex items-center text-slate-700 font-bold mb-8 hover:underline">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to login options
         </Link>
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <ShieldCheck className="h-8 w-8 text-red-700" />
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserCheck className="h-8 w-8 text-emerald-700" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900">Administrator Login</h1>
-            <p className="text-slate-600 text-sm mt-2">Access the platform management console</p>
+            <h1 className="text-3xl font-black text-slate-900">Parent Login</h1>
+            <p className="text-slate-600 text-sm mt-2">View your child’s results and school announcements.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -67,8 +65,8 @@ const AdminLogin = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-slate-900 placeholder-slate-400 focus:border-red-700 focus:ring-2 focus:ring-red-100 outline-none transition"
-                placeholder="admin@school.local"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-slate-900 placeholder-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 outline-none transition"
+                placeholder="parent@school.local"
               />
             </div>
 
@@ -80,7 +78,7 @@ const AdminLogin = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-slate-900 placeholder-slate-400 focus:border-red-700 focus:ring-2 focus:ring-red-100 outline-none transition"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-slate-900 placeholder-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 outline-none transition"
                 placeholder="••••••••"
               />
             </div>
@@ -94,17 +92,20 @@ const AdminLogin = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-red-800 transition-all disabled:opacity-50"
+              className="w-full bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-800 transition-all disabled:opacity-50"
             >
-              {loading ? "Signing in..." : "Sign in as Administrator"}
+              {loading ? "Signing in..." : "Sign in as Parent"}
             </button>
           </form>
 
-
+          <div className="mt-6 text-center text-sm text-slate-600">
+            <p className="mb-3"><Link to="/parent-signup" className="font-bold text-emerald-700 hover:underline">Create a parent account with a student code</Link></p>
+            <p>If your parent account is not yet activated, contact your administrator for setup details.</p>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default AdminLogin;
+export default ParentLogin;

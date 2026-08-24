@@ -16,24 +16,22 @@ const courseSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    targetClass: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class",
+      required: false,
+      index: true,
+    },
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
       ref: "User",
       index: true,
     },
-    materials: [
+    teachers: [
       {
-        title: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        url: {
-          type: String,
-          required: true,
-          trim: true,
-        },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
       },
     ],
     assignments: [
@@ -48,8 +46,29 @@ const courseSchema = new mongoose.Schema(
           required: true,
           trim: true,
         },
-        dueDate: {
+        createdAt: {
           type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    materials: [
+      {
+        title: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        url: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        addedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+          index: true,
         },
         createdAt: {
           type: Date,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Copy,
@@ -27,6 +27,14 @@ const AdminPanel = () => {
 
   const [teacherData, setTeacherData] = useState({ name: "", email: "", password: "" });
   const [studentData, setStudentData] = useState({ name: "", email: "" });
+  const [directStudentData, setDirectStudentData] = useState({ name: "", email: "", password: "", classRef: "" });
+  const [classData, setClassData] = useState({ level: "", section: "", academicSession: "" });
+  const [subjectData, setSubjectData] = useState({ name: "", code: "" });
+  const [assignmentData, setAssignmentData] = useState({ subject: "", class: "", teacher: "", periodsPerWeek: 1 });
+  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [timetableStatus, setTimetableStatus] = useState("");
+  const [timetableSlots, setTimetableSlots] = useState([]);
   const [passkey, setPasskey] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -39,25 +47,29 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(false);
   const [actionInProgress, setActionInProgress] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError("");
     try {
-      const [applicantRes, accountRes, teacherRes] = await Promise.all([
+      const [applicantRes, accountRes, teacherRes, classRes, subjectRes] = await Promise.all([
         api.get("/admin/students"),
         api.get("/admin/account-students"),
         api.get("/admin/teachers"),
+        api.get("/admin/classes"),
+        api.get("/admin/subjects"),
       ]);
       setApplicants(applicantRes.data.students || []);
       setAccountStudents(accountRes.data.accountStudents || []);
       setTeachers(teacherRes.data.teachers || []);
+      setClasses(classRes.data.classes || []);
+      setSubjects(subjectRes.data.subjects || []);
     } catch (err) {
       setError(err.response?.data?.message || "Unable to load admin data.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (!token) {
@@ -65,19 +77,19 @@ const AdminPanel = () => {
       return;
     }
     fetchData();
-  }, [token]);
+  }, [fetchData, navigate, token]);
 
   const unifiedStudents = useMemo(() => {
     const applicantRows = applicants.map((row) => ({
       ...row,
       type: "applicant",
-      displayName: row.fullName,
+      displayName: row.fullName || row.name || row.email,
       status: "Application",
     }));
     const accountRows = accountStudents.map((row) => ({
       ...row,
       type: "account",
-      displayName: row.name,
+      displayName: row.fullName || row.name || row.email,
       status: row.isActivated ? "Active" : "Pending activation",
     }));
     return [...accountRows, ...applicantRows].sort(
@@ -109,7 +121,7 @@ const AdminPanel = () => {
     if (!searchQuery) return teachers;
     const query = searchQuery.toLowerCase();
     return teachers.filter((teacher) =>
-      [teacher.name, teacher.email].filter(Boolean).some((value) => value.toLowerCase().includes(query))
+      [teacher.fullName || teacher.name || teacher.email, teacher.email].filter(Boolean).some((value) => value.toLowerCase().includes(query))
     );
   }, [teachers, searchQuery]);
 
@@ -126,7 +138,11 @@ const AdminPanel = () => {
     event.preventDefault();
     setActionInProgress(true);
     try {
-      const response = await api.post("/admin/create-teacher", teacherData);
+      const response = await api.post("/admin/create-teacher", {
+        fullName: teacherData.name,
+        email: teacherData.email,
+        password: teacherData.password,
+      });
       showNotification(response.data.message || "Teacher created successfully.");
       setTeacherData({ name: "", email: "", password: "" });
       fetchData();
@@ -141,7 +157,10 @@ const AdminPanel = () => {
     event.preventDefault();
     setActionInProgress(true);
     try {
-      const response = await api.post("/admin/create-student-passkey", studentData);
+      const response = await api.post("/admin/create-student-passkey", {
+        fullName: studentData.name,
+        email: studentData.email,
+      });
       setPasskey(response.data.passkey);
       showNotification("Student passkey generated successfully.");
       setStudentData({ name: "", email: "" });
@@ -151,6 +170,79 @@ const AdminPanel = () => {
     } finally {
       setActionInProgress(false);
     }
+  };
+
+  const handleDirectStudentSubmit = async (event) => {
+    event.preventDefault();
+    setActionInProgress(true);
+    try {
+      const response = await api.post("/admin/create-student", { fullName: directStudentData.name, email: directStudentData.email, password: directStudentData.password, classRef: directStudentData.classRef || undefined });
+      setPasskey(`Student code: ${response.data.studentCode}`);
+      showNotification("Student account created successfully.");
+      setDirectStudentData({ name: "", email: "", password: "", classRef: "" });
+      fetchData();
+    } catch (err) {
+      showNotification(err.response?.data?.message || "Could not create student account.", true);
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const handleClassSubmit = async (event) => {
+    event.preventDefault();
+    setActionInProgress(true);
+    try {
+      await api.post("/admin/classes", classData);
+      setClassData({ level: "", section: "", academicSession: "" });
+      showNotification("Class created successfully.");
+      fetchData();
+    } catch (err) { showNotification(err.response?.data?.message || "Could not create class.", true); }
+    finally { setActionInProgress(false); }
+  };
+
+  const handleSubjectSubmit = async (event) => {
+    event.preventDefault();
+    setActionInProgress(true);
+    try {
+      await api.post("/admin/subjects", subjectData);
+      setSubjectData({ name: "", code: "" });
+      showNotification("Subject created successfully.");
+      fetchData();
+    } catch (err) { showNotification(err.response?.data?.message || "Could not create subject.", true); }
+    finally { setActionInProgress(false); }
+  };
+
+  const handleAssignmentSubmit = async (event) => {
+    event.preventDefault();
+    setActionInProgress(true);
+    try {
+      await api.post("/admin/subject-assignments", assignmentData);
+      setAssignmentData({ subject: "", class: "", teacher: "", periodsPerWeek: 1 });
+      showNotification("Subject assignment created successfully.");
+    } catch (err) { showNotification(err.response?.data?.message || "Could not assign subject.", true); }
+    finally { setActionInProgress(false); }
+  };
+
+  const handleGenerateTimetable = async () => {
+    setActionInProgress(true);
+    try {
+      const response = await api.post("/admin/timetable/generate", {});
+      setTimetableStatus(`${response.data.generated} slots generated${response.data.conflicts?.length ? `; ${response.data.conflicts.length} conflicts need review` : "."}`);
+      showNotification("Timetable generated successfully.");
+      const slots = await api.get("/admin/timetable");
+      setTimetableSlots(slots.data.slots || []);
+    } catch (err) { showNotification(err.response?.data?.message || "Could not generate timetable.", true); }
+    finally { setActionInProgress(false); }
+  };
+
+  const handleRegenerateCode = async (studentId) => {
+    setActionInProgress(true);
+    try {
+      const response = await api.post(`/admin/students/${studentId}/regenerate-code`);
+      setAccountStudents((current) => current.map((student) => student._id === studentId ? { ...student, studentCode: response.data.studentCode } : student));
+      showNotification("Student code regenerated successfully.");
+    } catch (err) { showNotification(err.response?.data?.message || "Could not regenerate student code.", true); }
+    finally { setActionInProgress(false); }
   };
 
   const handleDelete = async () => {
@@ -190,7 +282,7 @@ const AdminPanel = () => {
 
   const deleteMessage = deleteTarget
     ? deleteTarget.kind === "teacher"
-      ? `Delete teacher ${deleteTarget.name}? This removes their profile and linked course data.`
+      ? `Delete teacher ${deleteTarget.fullName || deleteTarget.name || deleteTarget.email}? This removes their profile and linked course data.`
       : deleteTarget.type === "account"
         ? `Delete LMS account for ${deleteTarget.displayName}? This removes their grades, submissions, and enrollments.`
         : `Remove admission application for ${deleteTarget.displayName}? This cannot be undone.`
@@ -210,7 +302,7 @@ const AdminPanel = () => {
       role="Administration"
       title="School Management"
       subtitle="Manage admission applications, LMS student accounts, teachers, and passkey provisioning from one place."
-      userName={authSession?.name || authSession?.email}
+      userName={authSession?.fullName || authSession?.name || authSession?.email}
       onLogout={handleLogout}
       stats={[
         { label: "Total students", value: unifiedStudents.length, icon: Users },
@@ -225,9 +317,15 @@ const AdminPanel = () => {
         </button>
       }
     >
+      <nav className="mb-6 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Administration sections">
+        {[['overview', 'Overview'], ['people', 'People'], ['academic', 'Academic setup'], ['timetable', 'Timetable'], ['records', 'Records']].map(([id, label]) => (
+          <a key={id} href={`#${id}`} className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">{label}</a>
+        ))}
+      </nav>
+      <div id="overview" className="scroll-mt-6">
       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div id="people" className="grid gap-6 lg:grid-cols-2 scroll-mt-6">
             <Panel title="Create Teacher" description="Provision instructors with direct login access.">
               <form onSubmit={handleTeacherSubmit} className="space-y-4">
                 <label className="block text-sm font-medium text-slate-700">
@@ -307,6 +405,53 @@ const AdminPanel = () => {
             </Panel>
           </div>
 
+          <div id="academic" className="scroll-mt-6">
+          <Panel title="Portal Setup" description="Create students, organize classes, assign subjects, and generate the weekly timetable.">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <form onSubmit={handleDirectStudentSubmit} className="space-y-3">
+                <h3 className="font-semibold text-slate-900">Create Student Directly</h3>
+                <input className="dash-input" placeholder="Full name" value={directStudentData.name} onChange={(e) => setDirectStudentData({ ...directStudentData, name: e.target.value })} required />
+                <input className="dash-input" type="email" placeholder="Email" value={directStudentData.email} onChange={(e) => setDirectStudentData({ ...directStudentData, email: e.target.value })} required />
+                <input className="dash-input" type="password" placeholder="Password (8+ chars, upper/lower/number)" value={directStudentData.password} onChange={(e) => setDirectStudentData({ ...directStudentData, password: e.target.value })} required />
+                <select className="dash-input" value={directStudentData.classRef} onChange={(e) => setDirectStudentData({ ...directStudentData, classRef: e.target.value })}>
+                  <option value="">No class yet</option>
+                  {classes.map((item) => <option key={item._id} value={item._id}>{item.name} ({item.academicSession})</option>)}
+                </select>
+                <button className="dash-btn-primary w-full" disabled={actionInProgress}>Create Student</button>
+              </form>
+
+              <form onSubmit={handleClassSubmit} className="space-y-3">
+                <h3 className="font-semibold text-slate-900">Create Class</h3>
+                <input className="dash-input" placeholder="Level, e.g. JS1" value={classData.level} onChange={(e) => setClassData({ ...classData, level: e.target.value })} required />
+                <input className="dash-input" placeholder="Section, e.g. A" value={classData.section} onChange={(e) => setClassData({ ...classData, section: e.target.value })} required />
+                <input className="dash-input" placeholder="Academic session, e.g. 2026/2027" value={classData.academicSession} onChange={(e) => setClassData({ ...classData, academicSession: e.target.value })} required />
+                <button className="dash-btn-primary w-full" disabled={actionInProgress}>Create Class</button>
+              </form>
+
+              <form onSubmit={handleSubjectSubmit} className="space-y-3">
+                <h3 className="font-semibold text-slate-900">Create Subject</h3>
+                <input className="dash-input" placeholder="Subject name" value={subjectData.name} onChange={(e) => setSubjectData({ ...subjectData, name: e.target.value })} required />
+                <input className="dash-input" placeholder="Subject code, e.g. MATH" value={subjectData.code} onChange={(e) => setSubjectData({ ...subjectData, code: e.target.value })} required />
+                <button className="dash-btn-primary w-full" disabled={actionInProgress}>Create Subject</button>
+              </form>
+
+              <form onSubmit={handleAssignmentSubmit} className="space-y-3">
+                <h3 className="font-semibold text-slate-900">Assign Subject and Teacher</h3>
+                <select className="dash-input" value={assignmentData.subject} onChange={(e) => setAssignmentData({ ...assignmentData, subject: e.target.value })} required><option value="">Select subject</option>{subjects.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>
+                <select className="dash-input" value={assignmentData.class} onChange={(e) => setAssignmentData({ ...assignmentData, class: e.target.value })} required><option value="">Select class</option>{classes.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>
+                <select className="dash-input" value={assignmentData.teacher} onChange={(e) => setAssignmentData({ ...assignmentData, teacher: e.target.value })} required><option value="">Select teacher</option>{teachers.map((item) => <option key={item._id} value={item._id}>{item.fullName || item.email}</option>)}</select>
+                <input className="dash-input" type="number" min="1" max="40" placeholder="Periods per week" value={assignmentData.periodsPerWeek} onChange={(e) => setAssignmentData({ ...assignmentData, periodsPerWeek: Number(e.target.value) })} required />
+                <button className="dash-btn-primary w-full" disabled={actionInProgress}>Save Assignment</button>
+              </form>
+            </div>
+            <div className="mt-6 flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="font-semibold text-slate-900">Weekly timetable</p><p className="text-sm text-slate-600">Generates eight periods across Monday to Friday for every configured class.</p>{timetableStatus && <p className="mt-1 text-sm font-medium text-emerald-700">{timetableStatus}</p>}</div>
+              <button type="button" onClick={handleGenerateTimetable} disabled={actionInProgress} className="dash-btn-primary shrink-0"><RefreshCcw className="h-4 w-4" /> Generate Timetable</button>
+            </div>
+          </Panel>
+          </div>
+
+          <div id="records" className="scroll-mt-6">
           <Panel
             title="Student & Teacher Records"
             description="Admission applications come from the public enroll form. LMS accounts are created via passkey."
@@ -348,7 +493,7 @@ const AdminPanel = () => {
                     <tbody>
                       {filteredTeachers.map((teacher) => (
                         <tr key={teacher._id}>
-                          <td className="font-semibold text-slate-900">{teacher.name}</td>
+                          <td className="font-semibold text-slate-900">{teacher.fullName || teacher.name || teacher.email}</td>
                           <td>{teacher.email}</td>
                           <td className="text-slate-500">{new Date(teacher.createdAt).toLocaleDateString()}</td>
                           <td className="text-right">
@@ -411,12 +556,14 @@ const AdminPanel = () => {
                           ) : (
                             <>
                               <div>{student.enrolledCourses?.length || 0} enrolled courses</div>
+                              {student.studentCode && <div className="font-mono text-xs text-emerald-700">{student.studentCode}</div>}
                               <div className="text-slate-500">{student.isActivated ? "Can log in" : "Awaiting activation"}</div>
                             </>
                           )}
                         </td>
                         <td className="text-slate-500">{new Date(student.createdAt || Date.now()).toLocaleDateString()}</td>
                         <td className="text-right">
+                          {student.type === "account" && student.studentCode && <button type="button" onClick={() => handleRegenerateCode(student._id)} className="dash-btn-secondary mr-2 px-3 py-1.5 text-xs">Regenerate code</button>}
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(student)}
@@ -432,6 +579,11 @@ const AdminPanel = () => {
               </div>
             )}
           </Panel>
+          </div>
+
+          {timetableSlots.length > 0 && <div id="timetable" className="scroll-mt-6"><Panel title="Generated Timetable Preview" description="The latest generated schedule across all configured classes.">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{timetableSlots.slice(0, 20).map((slot) => <div key={slot._id} className="rounded-xl border border-slate-200 p-3 text-sm"><p className="font-semibold text-slate-900">{slot.subjectAssignment?.subject?.name || "Free Period"}</p><p className="text-slate-600">{slot.class?.name} · {slot.day} P{slot.period}</p></div>)}</div>
+          </Panel></div>}
         </div>
 
         <aside className="space-y-6">
@@ -493,6 +645,7 @@ const AdminPanel = () => {
 
       <Toast message={message} type="success" />
       <Toast message={error} type="error" />
+      </div>
     </DashboardLayout>
   );
 };

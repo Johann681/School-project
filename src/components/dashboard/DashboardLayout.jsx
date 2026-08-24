@@ -1,4 +1,7 @@
-import { LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
+import { BookOpen, CalendarDays, ClipboardCheck, FileText, LayoutDashboard, LogOut, Settings, Users } from "lucide-react";
+import api from "../../api/axiosClient";
 
 const DashboardLayout = ({
   role,
@@ -9,20 +12,56 @@ const DashboardLayout = ({
   stats = [],
   children,
   actions,
+  statsClassName = "sm:grid-cols-2 lg:grid-cols-4",
+  compactHeader = false,
 }) => {
+  const [academicPeriod, setAcademicPeriod] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    api.get("/settings/academic-period")
+      .then((response) => { if (active) setAcademicPeriod(response.data.period); })
+      .catch(() => { if (active) setAcademicPeriod(null); });
+    return () => { active = false; };
+  }, []);
+  const navigationByRole = {
+    Administration: [
+      { label: "Overview", path: "/admin", icon: LayoutDashboard },
+      { label: "Audit logs", path: "/admin/audit", icon: FileText },
+    ],
+    "Teacher Portal": [
+      { label: "Courses", path: "/teacher", icon: BookOpen },
+      { label: "My timetable", path: "/teacher-timetable", icon: CalendarDays },
+      { label: "Attendance", path: "/teacher-attendance", icon: ClipboardCheck },
+    ],
+    "Student Portal": [
+      { label: "My learning", path: "/student", icon: BookOpen },
+      { label: "Timetable", path: "/student-timetable", icon: CalendarDays },
+    ],
+    "Parent Portal": [
+      { label: "Children", path: "/parent", icon: Users },
+    ],
+  };
+  const navigation = navigationByRole[role] || [];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
+        <header className={`${compactHeader ? "mb-5 p-4 sm:mb-8 sm:p-6" : "mb-8 p-6"} rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-sm`}>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">{role}</p>
               <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
               {subtitle && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">{subtitle}</p>}
               {userName && (
-                <p className="mt-3 text-sm font-medium text-slate-500">
+                <p className={`${compactHeader ? "hidden sm:block" : ""} mt-3 text-sm font-medium text-slate-500`}>
                   Signed in as <span className="text-slate-800">{userName}</span>
                 </p>
+              )}
+              {academicPeriod && (
+                <span className="mt-3 inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  {academicPeriod.academicSession} · {academicPeriod.term.replace("_", " ")}
+                </span>
               )}
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-3">
@@ -39,7 +78,7 @@ const DashboardLayout = ({
           </div>
 
           {stats.length > 0 && (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className={`${compactHeader ? "mt-4 sm:mt-6" : "mt-6"} grid gap-3 ${statsClassName}`}>
               {stats.map(({ label, value, icon: Icon }) => (
                 <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
                   <div className="flex items-center justify-between">
@@ -53,7 +92,30 @@ const DashboardLayout = ({
           )}
         </header>
 
-        {children}
+        <div className={navigation.length > 0 ? "grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]" : ""}>
+          {navigation.length > 0 && (
+            <aside className="hidden h-fit rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-sm lg:sticky lg:top-6 lg:block">
+              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">Workspace</p>
+              <nav className="space-y-1" aria-label="Dashboard navigation">
+                {navigation.map(({ label, path, icon: Icon }) => (
+                  <NavLink
+                    key={path}
+                    to={path}
+                    end={path === "/admin" || path === "/teacher" || path === "/student" || path === "/parent"}
+                    className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${isActive ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </NavLink>
+                ))}
+              </nav>
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <p className="flex items-center gap-2 px-3 text-xs font-medium text-slate-400"><Settings className="h-3.5 w-3.5" /> Account secured</p>
+              </div>
+            </aside>
+          )}
+          <main className="min-w-0">{children}</main>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../api/axiosClient";
+import api, { setAuthSession } from "../api/axiosClient";
 import { ArrowLeft, UserRoundCheck } from "lucide-react";
 
 const TeacherLogin = () => {
@@ -22,7 +22,7 @@ const TeacherLogin = () => {
       const response = await api.post("/auth/login", formData);
       const { token, role, name, email } = response.data;
 
-      if (role !== "teacher") {
+      if ((role || "").toString().toUpperCase() !== "TEACHER") {
         setStatus({
           type: "error",
           message: "This account is not authorized for teacher access.",
@@ -30,8 +30,7 @@ const TeacherLogin = () => {
         setLoading(false);
         return;
       }
-
-      localStorage.setItem("lmsAuth", JSON.stringify({ token, role, name, email }));
+      setAuthSession({ token, role: (role || "").toString().toUpperCase(), name, email });
       navigate("/teacher");
     } catch (err) {
       setStatus({

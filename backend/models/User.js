@@ -3,7 +3,7 @@ const bcrypt = require("bcrypt");
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -19,16 +19,18 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
+      required: false,
       select: false,
-    },
-    role: {
-      type: String,
-      required: true,
-      enum: ["admin", "teacher", "student"],
-      index: true,
     },
     passkey: {
       type: String,
+      trim: true,
+      index: true,
+    },
+    studentCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
       unique: true,
       sparse: true,
       index: true,
@@ -38,10 +40,35 @@ const userSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    role: {
+      type: String,
+      required: true,
+      enum: ["ADMIN", "TEACHER", "STUDENT", "PARENT"],
+      index: true,
+    },
+    studentClass: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class",
+      index: true,
+    },
     enrolledCourses: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Course",
+        index: true,
+      },
+    ],
+    assignedClasses: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Class",
+        index: true,
+      },
+    ],
+    linkedStudents: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
         index: true,
       },
     ],

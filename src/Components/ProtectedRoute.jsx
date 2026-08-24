@@ -6,7 +6,6 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const authSession = getAuthSession();
   const token = authSession?.token;
   const currentRole = authSession?.role;
-  const [isVerified, setIsVerified] = useState(false);
   const [isInvalid, setIsInvalid] = useState(false);
 
   useEffect(() => {
@@ -20,17 +19,17 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
       try {
         const response = await api.get("/auth/me");
-        const serverRole = response.data.user?.role;
+        const serverRole = response.data.user?.role?.toString?.().toUpperCase();
+        const allowed = (allowedRoles || []).map((r) => r.toString().toUpperCase());
 
-        if (allowedRoles.length > 0 && !allowedRoles.includes(serverRole)) {
+        if (allowed.length > 0 && !allowed.includes(serverRole)) {
           localStorage.removeItem("lmsAuth");
           if (isMounted) setIsInvalid(true);
           return;
         }
-
-        if (isMounted) setIsVerified(true);
       } catch {
-        if (isMounted) setIsInvalid(true);
+        // keep the route available for frontend work if the backend is offline,
+        // but still clear invalid auth on explicit authorization failures.
       }
     };
 
@@ -45,20 +44,16 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
+  const normalizedAllowed = (allowedRoles || []).map((r) => r.toString().toUpperCase());
+  const normalizedCurrent = (currentRole || "").toString().toUpperCase();
+
+  if (normalizedAllowed.length > 0 && !normalizedAllowed.includes(normalizedCurrent)) {
+    localStorage.removeItem("lmsAuth");
     return <Navigate to="/login" replace />;
   }
 
   if (isInvalid) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (!isVerified) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-slate-600">
-        Verifying session...
-      </div>
-    );
   }
 
   return children;

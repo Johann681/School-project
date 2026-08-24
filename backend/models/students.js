@@ -11,6 +11,19 @@ const studentSchema = new mongoose.Schema(
       required: true,
       unique: true, // ✅ Added this line
     },
+    studentCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    classRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class",
+      index: true,
+    },
     dob: {
       type: Date,
       required: true,

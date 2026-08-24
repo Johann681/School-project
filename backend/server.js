@@ -1,13 +1,24 @@
-require("dotenv").config();
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
+
+const express = require('express');
+const mongoose = require('mongoose');
+const path = require('path');
+
+// 1. Force the engine to look at your fresh backend .env configurations directly
+require('dotenv').config({ 
+  path: path.join(__dirname, '.env'),
+  override: true 
+});
+const cors = require('cors');
+
 
 const enrollRoutes = require("./routes/enroll");
 const adminRoutes = require("./routes/admin");
 const authRoutes = require("./routes/auth");
 const teacherRoutes = require("./routes/teacher");
 const studentRoutes = require("./routes/student");
+const parentRoutes = require("./routes/parent");
+const attendanceRoutes = require("./routes/attendance");
+const settingsRoutes = require("./routes/settings");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -28,6 +39,8 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "http://localhost:4173",
   "http://127.0.0.1:4173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -57,9 +70,12 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.use("/api/enroll", enrollRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/settings", settingsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/student", studentRoutes);
+app.use("/api/parent", parentRoutes);
+app.use("/api/attendance", attendanceRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "API endpoint not found." });
@@ -78,18 +94,36 @@ app.use((err, req, res, next) => {
   return res.status(500).json({ success: false, message: "Unexpected server error." });
 });
 
-const startServer = async () => {
+// ==========================================================
+// CLEAN MODERNIZED ATLAS CONNECTION
+// ==========================================================
+async function startServer() {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected");
+    // 2. Safely read your brand-new Atlas connection string
+    const dbURI = process.env.MONGO_URI;
 
-    app.listen(PORT, () =>
-      console.log(`🚀 Server running on http://localhost:${PORT}`)
-    );
-  } catch (err) {
-    console.error("❌ MongoDB connection error:", err);
+    if (!dbURI) {
+      console.error("❌ CRITICAL SETUP ERROR: process.env.MONGO_URI is missing or undefined.");
+      process.exit(1);
+    }
+
+    console.log('🔄 Attempting a handshake with the new Atlas Cluster...');
+    
+    // 3. Connect cleanly without passing any old, deprecated options parameters
+    await mongoose.connect(dbURI);
+    
+    console.log('✅ MongoDB connected successfully to the new cloud cluster!');
+    
+    // 4. Secure the runtime port listener loop
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend system service online and listening on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error('❌ MongoDB database connection failure:', error);
     process.exit(1);
   }
-};
+}
 
+// Execute the server start script configuration
 startServer();

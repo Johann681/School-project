@@ -26,6 +26,21 @@ export const getAuthSession = () => {
   }
 };
 
+export const setAuthSession = (session) => {
+  localStorage.setItem("lmsAuth", JSON.stringify(session));
+};
+
+export const clearAuthSession = () => {
+  localStorage.removeItem("lmsAuth");
+};
+
+export const isNetworkError = (error) => {
+  return (
+    !error.response &&
+    (error.message === "Network Error" || error.code === "ERR_NETWORK" || Boolean(error.request))
+  );
+};
+
 api.interceptors.request.use((config) => {
   const authSession = getAuthSession();
   const token = authSession?.token;

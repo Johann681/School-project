@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ClipboardList, GraduationCap, Send, Star, Compass, X, AlertTriangle, Maximize2 } from "lucide-react";
+import { BookOpen, ClipboardList, GraduationCap, Send, Star, X, AlertTriangle, Maximize2, ChevronDown, ChevronRight } from "lucide-react";
 import api from "../api/axiosClient";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Panel from "../components/dashboard/Panel";
@@ -69,10 +69,10 @@ const StudentProfile = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [performanceRecords, setPerformanceRecords] = useState([]);
-  const [availableCourses, setAvailableCourses] = useState([]);
-  const [pendingCourseIds, setPendingCourseIds] = useState([]);
   const [submissionForms, setSubmissionForms] = useState({});
   const [activeTab, setActiveTab] = useState("registered");
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const [courseSection, setCourseSection] = useState("materials");
   const [status, setStatus] = useState({ type: "", message: "" });
   const [activeSubmissions, setActiveSubmissions] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,21 +83,11 @@ const StudentProfile = () => {
 
   const authSession = useMemo(() => JSON.parse(localStorage.getItem("lmsAuth") || "null"), []);
   const token = authSession?.token;
-  const studentName = authSession?.name || "Student";
+  const studentName = authSession?.fullName || authSession?.name || authSession?.email || "Student";
 
   const showStatus = (type, message) => {
     setStatus({ type, message });
     window.setTimeout(() => setStatus({ type: "", message: "" }), 4500);
-  };
-
-  const fetchAvailableCourses = async () => {
-    try {
-      const res = await api.get("/student/available-courses");
-      setAvailableCourses(res.data.availableCourses || []);
-      setPendingCourseIds(res.data.pendingCourseIds || []);
-    } catch (err) {
-      console.error(err);
-    }
   };
 
   const fetchDashboard = useCallback(async () => {
@@ -110,16 +100,6 @@ const StudentProfile = () => {
       showStatus("error", err.response?.data?.message || "Unable to load your academic profile.");
     }
   }, []);
-
-  const handleRequestEnrollment = async (courseId) => {
-    try {
-      await api.post(`/student/request-enrollment/${courseId}`, {});
-      showStatus("success", "Enrollment request sent.");
-      fetchAvailableCourses();
-    } catch (err) {
-      showStatus("error", err.response?.data?.message || "Failed to request enrollment.");
-    }
-  };
 
   // Triggers final submission summary sheet
   const handleTriggerReview = (courseId, assignmentTitle, textContent) => {
@@ -172,13 +152,17 @@ const StudentProfile = () => {
     navigate("/login");
   };
 
+  const toggleCourse = (courseId) => {
+    setExpandedCourseId((current) => current === courseId ? null : courseId);
+    setCourseSection("materials");
+  };
+
   useEffect(() => {
     if (!token) {
       navigate("/login");
       return;
     }
     fetchDashboard();
-    fetchAvailableCourses();
   }, [token]);
 
   const averageScore = useMemo(() => {
@@ -190,7 +174,6 @@ const StudentProfile = () => {
 
   const tabs = [
     { id: "registered", label: "My Courses" },
-    { id: "discovery", label: "Browse Courses", count: availableCourses.length },
     { id: "insights", label: "My Results", count: performanceRecords.length },
   ];
 
@@ -198,12 +181,12 @@ const StudentProfile = () => {
     <DashboardLayout
       role="Student Portal"
       title={`${getGreeting()}, ${studentName}`}
-      subtitle="Access course materials, submit assignments, browse new courses, and track your graded results."
+      subtitle="Access your administrator-assigned courses, submit assignments, and track your graded results."
       userName={studentName}
       onLogout={handleLogout}
       stats={[
         { label: "Enrolled courses", value: courses.length, icon: BookOpen },
-        { label: "Pending submissions", value: activeSubmissions.length, icon: Send },
+        { label: "Submitted assignments", value: activeSubmissions.length, icon: Send },
         { label: "Grades received", value: performanceRecords.length, icon: GraduationCap },
         { label: "Average score", value: averageScore !== null ? `${averageScore}%` : "—", icon: Star },
       ]}
@@ -220,23 +203,31 @@ const StudentProfile = () => {
         >
           {courses.length === 0 ? (
             <EmptyState
-              icon={BookOpen}
-              title="No courses enrolled"
-              description="Browse available courses and request enrollment from your teacher."
-            />
+                    icon={BookOpen}
+                    title="No courses assigned yet"
+                    description="Your administrator will register you for courses when your timetable is set up."
+                  />
           ) : (
-            <div className="space-y-4">
-              {courses.map((course) => (
-                <div key={course._id} className="rounded-xl border border-slate-200 bg-slate-50/80 p-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-lg font-semibold text-slate-900">{course.title}</p>
-                      <p className="text-sm text-slate-500">Code: {course.code}</p>
+            <div className="space-y-3">
+              {courses.map((course) => {
+                const isExpanded = expandedCourseId === course._id;
+                return (
+                <div key={course._id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <button type="button" onClick={() => toggleCourse(course._id)} className="flex w-full items-center justify-between gap-4 p-5 text-left transition hover:bg-slate-50">
+                    <div className="flex min-w-0 items-center gap-3">
+                      {isExpanded ? <ChevronDown className="h-5 w-5 shrink-0 text-indigo-600" /> : <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />}
+                      <div className="min-w-0"><p className="truncate text-lg font-semibold text-slate-900">{course.title}</p><p className="text-sm text-slate-500">Code: {course.code}</p></div>
                     </div>
-                    <Badge>{course.materials?.length || 0} resources</Badge>
-                  </div>
+                    <Badge>{(course.materials?.length || 0) + (course.assignments?.length || 0)} items</Badge>
+                  </button>
 
-                  {course.materials?.length > 0 ? (
+                  {isExpanded && <div className="border-t border-slate-200 bg-slate-50/70 p-5">
+                    <div className="mb-5 flex gap-2 border-b border-slate-200 pb-3">
+                      <button type="button" onClick={() => setCourseSection("materials")} className={`rounded-lg px-3 py-2 text-sm font-semibold ${courseSection === "materials" ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-white"}`}>Materials ({course.materials?.length || 0})</button>
+                      <button type="button" onClick={() => setCourseSection("assignments")} className={`rounded-lg px-3 py-2 text-sm font-semibold ${courseSection === "assignments" ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-white"}`}>Assignments ({course.assignments?.length || 0})</button>
+                    </div>
+
+                  {courseSection === "materials" && (course.materials?.length > 0 ? (
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       {course.materials.map((material, idx) => (
                         <a
@@ -253,9 +244,9 @@ const StudentProfile = () => {
                     </div>
                   ) : (
                     <p className="mt-4 text-sm text-slate-500">No materials shared yet.</p>
-                  )}
+                  ))}
 
-                  <div className="mt-5 border-t border-slate-200 pt-5">
+                  {courseSection === "assignments" && <div className="mt-5">
                     <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
                       <ClipboardList className="h-4 w-4 text-indigo-600" /> Assignments
                     </p>
@@ -276,9 +267,11 @@ const StudentProfile = () => {
                     ) : (
                       <p className="text-sm text-slate-500">No active assignments.</p>
                     )}
-                  </div>
+                  </div>}
+                  </div>}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Panel>
@@ -319,40 +312,6 @@ const StudentProfile = () => {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </Panel>
-      )}
-
-      {activeTab === "discovery" && (
-        <Panel title="Browse Courses" description="Request enrollment in courses offered by your teachers.">
-          {availableCourses.length === 0 ? (
-            <EmptyState icon={Compass} title="No courses available" description="Check back later for new courses." />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {availableCourses.map((course) => {
-                const isPending = pendingCourseIds.includes(course._id.toString());
-                return (
-                  <div key={course._id} className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-5">
-                    <div>
-                      <p className="text-lg font-semibold text-slate-900">{course.title}</p>
-                      <p className="text-sm text-slate-500">Code: {course.code}</p>
-                      <p className="mt-2 text-xs text-slate-500">Teacher: {course.teacherId?.name || "—"}</p>
-                    </div>
-                    <button
-                      onClick={() => handleRequestEnrollment(course._id)}
-                      disabled={isPending}
-                      className={`mt-4 w-full rounded-xl py-2.5 text-sm font-semibold transition ${
-                        isPending
-                          ? "cursor-not-allowed bg-slate-200 text-slate-500"
-                          : "bg-indigo-600 text-white hover:bg-indigo-700"
-                      }`}
-                    >
-                      {isPending ? "Request Pending" : "Request to Join"}
-                    </button>
-                  </div>
-                );
-              })}
             </div>
           )}
         </Panel>

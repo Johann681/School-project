@@ -6,6 +6,8 @@ const Submission = require("../models/Submission");
 const Performance = require("../models/Performance");
 const EnrollmentRequest = require("../models/EnrollmentRequest");
 const User = require("../models/User");
+const TimetableSlot = require("../models/TimetableSlot");
+const SubjectAssignment = require("../models/SubjectAssignment");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 const sanitize = (value) => {
@@ -13,11 +15,44 @@ const sanitize = (value) => {
   return xss(value.trim());
 };
 
-router.use(requireAuth, requireRole("teacher"));
+router.use(requireAuth, requireRole("TEACHER"));
+
+router.get("/timetable", async (req, res) => {
+  const slots = await TimetableSlot.find().populate("class", "name level section").populate({ path: "subjectAssignment", match: { teacher: req.user._id }, populate: [{ path: "subject", select: "name code" }, { path: "teacher", select: "fullName email" }] }).lean();
+  return res.json({ success: true, timetable: slots.filter((slot) => slot.subjectAssignment) });
+});
+
+router.get("/subject-assignments", async (req, res) => {
+  try {
+    const assignments = await SubjectAssignment.find({ teacher: req.user._id })
+      .populate("subject", "name code")
+      .populate("class", "name level section academicSession")
+      .sort({ "class.name": 1, "subject.name": 1 })
+      .lean();
+    return res.json({ success: true, assignments });
+  } catch (err) {
+    console.error("Teacher subject assignments error:", err);
+    return res.status(500).json({ success: false, message: "Unable to fetch your subject assignments." });
+  }
+});
 
 router.get("/courses", async (req, res) => {
   try {
-    const courses = await Course.find({ teacherId: req.user._id })
+    const assignments = await SubjectAssignment.find({ teacher: req.user._id })
+      .populate("subject", "name code")
+      .populate("class", "name")
+      .lean();
+    for (const assignment of assignments) {
+      const existingCourse = await Course.findOne({ targetClass: assignment.class._id, title: assignment.subject.name });
+      if (!existingCourse) {
+        const code = `${assignment.subject.code}-${assignment.class.name}`.replace(/[^A-Z0-9-]/gi, "-").toUpperCase();
+        await Course.create({ title: assignment.subject.name, code, targetClass: assignment.class._id, teachers: [req.user._id], materials: [], assignments: [] });
+      } else if (!existingCourse.teachers.some((id) => id.toString() === req.user._id.toString())) {
+        existingCourse.teachers.push(req.user._id);
+        await existingCourse.save();
+      }
+    }
+    const courses = await Course.find({ teachers: req.user._id })
       .lean()
       .select("title code materials assignments")
       .sort({ createdAt: -1 });
@@ -43,7 +78,7 @@ router.post("/create-course", async (req, res) => {
       return res.status(409).json({ success: false, message: "Course code already exists." });
     }
 
-    const course = await Course.create({ title, code, teacherId: req.user._id, materials: [], assignments: [] });
+    const course = await Course.create({ title, code, teachers: [req.user._id], materials: [], assignments: [], targetClass: req.body.targetClass || undefined });
     res.status(201).json({ success: true, message: "Course created successfully.", course });
   } catch (err) {
     console.error("Create course error:", err);
@@ -54,7 +89,7 @@ router.post("/create-course", async (req, res) => {
 router.delete("/courses/:courseId", async (req, res) => {
   try {
     const courseId = req.params.courseId;
-    const course = await Course.findOne({ _id: courseId, teacherId: req.user._id }).lean();
+    const course = await Course.findOne({ _id: courseId, teachers: req.user._id }).lean();
 
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found or access denied." });
@@ -64,7 +99,7 @@ router.delete("/courses/:courseId", async (req, res) => {
       Submission.deleteMany({ courseId }),
       Performance.deleteMany({ courseId }),
       EnrollmentRequest.deleteMany({ courseId }),
-      User.updateMany({ role: "student", enrolledCourses: courseId }, { $pull: { enrolledCourses: courseId } }),
+      User.updateMany({ role: "STUDENT", enrolledCourses: courseId }, { $pull: { enrolledCourses: courseId } }),
       Course.findByIdAndDelete(courseId),
     ]);
 
@@ -85,12 +120,12 @@ router.post("/drop-material/:courseId", async (req, res) => {
       return res.status(400).json({ success: false, message: "Material title and URL are required." });
     }
 
-    const course = await Course.findOne({ _id: courseId, teacherId: req.user._id });
+    const course = await Course.findOne({ _id: courseId, teachers: req.user._id });
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found or access denied." });
     }
 
-    course.materials.push({ title, url });
+    course.materials.push({ title, url, addedBy: req.user._id });
     await course.save();
 
     res.json({ success: true, message: "Material added successfully.", materials: course.materials });
@@ -103,13 +138,13 @@ router.post("/drop-material/:courseId", async (req, res) => {
 router.get("/submissions/:courseId", async (req, res) => {
   try {
     const courseId = req.params.courseId;
-    const course = await Course.findOne({ _id: courseId, teacherId: req.user._id }).lean();
+    const course = await Course.findOne({ _id: courseId, teachers: req.user._id }).lean();
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found or access denied." });
     }
 
     const submissions = await Submission.find({ courseId })
-      .populate("studentId", "name email")
+      .populate("studentId", "fullName email")
       .lean()
       .select("studentId courseId assignmentId assignmentTitle submissionData createdAt")
       .sort({ createdAt: -1 });
@@ -137,7 +172,7 @@ router.post("/grade-and-purge/:submissionId", async (req, res) => {
     }
 
     const course = await Course.findById(submission.courseId).lean();
-    if (!course || course.teacherId.toString() !== req.user._id.toString()) {
+    if (!course || !course.teachers?.some((id) => id.toString() === req.user._id.toString())) {
       return res.status(403).json({ success: false, message: "You are not authorized to grade this submission." });
     }
 
@@ -170,7 +205,7 @@ router.post("/add-assignment/:courseId", async (req, res) => {
       return res.status(400).json({ success: false, message: "Assignment title and description are required." });
     }
 
-    const course = await Course.findOne({ _id: courseId, teacherId: req.user._id });
+    const course = await Course.findOne({ _id: courseId, teachers: req.user._id });
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found or access denied." });
     }
@@ -188,7 +223,7 @@ router.post("/add-assignment/:courseId", async (req, res) => {
 router.get("/enrollment-requests", async (req, res) => {
   try {
     const requests = await EnrollmentRequest.find({ teacherId: req.user._id, status: "pending" })
-      .populate("studentId", "name email")
+      .populate("studentId", "fullName email")
       .populate("courseId", "title code")
       .lean()
       .sort({ createdAt: -1 });
@@ -220,7 +255,7 @@ router.post("/handle-enrollment/:requestId", async (req, res) => {
 
     if (action === "approve") {
       const student = await User.findOneAndUpdate(
-        { _id: request.studentId, role: "student" },
+        { _id: request.studentId, role: "STUDENT" },
         { $addToSet: { enrolledCourses: request.courseId } },
         { new: true }
       ).lean();
@@ -243,13 +278,13 @@ router.post("/handle-enrollment/:requestId", async (req, res) => {
 router.get("/course-results/:courseId", async (req, res) => {
   try {
     const courseId = req.params.courseId;
-    const course = await Course.findOne({ _id: courseId, teacherId: req.user._id }).lean();
+    const course = await Course.findOne({ _id: courseId, teachers: req.user._id }).lean();
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found or access denied." });
     }
 
     const performances = await Performance.find({ courseId })
-      .populate("studentId", "name email")
+      .populate("studentId", "fullName email")
       .lean()
       .sort({ gradedAt: -1 });
 
@@ -265,14 +300,14 @@ router.get("/course-students/:courseId", async (req, res) => {
     const courseId = req.params.courseId;
 
     // Verify course belongs to teacher
-    const course = await Course.findOne({ _id: courseId, teacherId: req.user._id }).lean();
+    const course = await Course.findOne({ _id: courseId, teachers: req.user._id }).lean();
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found or access denied." });
     }
 
     // Find all students who have this course in their enrolledCourses
-    const students = await User.find({ role: "student", enrolledCourses: courseId })
-      .select("name email")
+    const students = await User.find({ role: "STUDENT", enrolledCourses: courseId })
+      .select("fullName email")
       .lean();
 
     // Fetch performance records for these students in this course
