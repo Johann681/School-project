@@ -1,12 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const Course = require("../models/Course");
+const Assignment = require("../models/Assignment");
 const TimetableSlot = require("../models/TimetableSlot");
 const Submission = require("../models/Submission");
 const Performance = require("../models/Performance");
 const EnrollmentRequest = require("../models/EnrollmentRequest");
 const User = require("../models/User");
 const { requireAuth, requireRole } = require("../middleware/auth");
+
+const hasDeadlinePassed = (dueDate) => {
+  const deadline = new Date(dueDate);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(dueDate))) deadline.setHours(23, 59, 59, 999);
+  return new Date() > deadline;
+};
 
 router.use(requireAuth, requireRole("STUDENT"));
 
@@ -38,9 +45,9 @@ router.get("/dashboard", async (req, res) => {
       .select("courseId assignmentId assignmentTitle score focusAreas gradedAt")
       .sort({ gradedAt: -1 });
 
-    const activeSubmissions = await Submission.find({ studentId })
+    const activeSubmissions = await Submission.find({ $or: [{ studentId }, { student: studentId }] })
       .lean()
-      .select("courseId assignmentId assignmentTitle createdAt")
+      .select("courseId assignmentId assignmentTitle assignment status objectiveScore theoryScore totalScore createdAt")
       .sort({ createdAt: -1 });
 
     const courses = await Course.find({ _id: { $in: enrolledCourseIds } })
@@ -48,7 +55,18 @@ router.get("/dashboard", async (req, res) => {
       .select("title code materials assignments")
       .sort({ title: 1 });
 
-    res.json({ success: true, courses, performanceRecords, activeSubmissions });
+    const structuredAssignments = await Assignment.find({ course: { $in: enrolledCourseIds } })
+      .lean()
+      .select("course title dueDate totalMarks objectiveQuestions.questionId objectiveQuestions.questionText objectiveQuestions.options objectiveQuestions.marks theoryQuestions createdAt")
+      .sort({ createdAt: -1 });
+    const assignmentsByCourse = structuredAssignments.reduce((result, assignment) => {
+      const key = assignment.course.toString();
+      result[key] = result[key] || [];
+      result[key].push(assignment);
+      return result;
+    }, {});
+
+    res.json({ success: true, courses: courses.map((course) => ({ ...course, structuredAssignments: assignmentsByCourse[course._id.toString()] || [] })), performanceRecords, activeSubmissions });
   } catch (err) {
     console.error("Student dashboard error:", err);
     res.status(500).json({
@@ -139,9 +157,9 @@ router.post("/request-enrollment/:courseId", async (req, res) => {
 
 router.post("/submit-assignment", async (req, res) => {
   try {
-    const { courseId, assignmentId, assignmentTitle, submissionData } = req.body;
+    const { courseId, assignmentId, assignmentTitle, submissionData, objectiveAnswers, theoryAnswers } = req.body;
 
-    if (!courseId || (!assignmentId && !assignmentTitle) || !submissionData) {
+    if (!courseId || (!assignmentId && !assignmentTitle)) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
@@ -163,12 +181,54 @@ router.post("/submit-assignment", async (req, res) => {
       return res.status(404).json({ success: false, message: "Course not found." });
     }
 
+    const structuredAssignment = assignmentId ? await Assignment.findOne({ _id: assignmentId, course: courseId }).lean() : null;
+    if (structuredAssignment) {
+      if (structuredAssignment.dueDate && hasDeadlinePassed(structuredAssignment.dueDate)) {
+        return res.status(400).json({ success: false, message: "This assignment is closed because its due date has passed." });
+      }
+      const normalizedObjectiveAnswers = Array.isArray(objectiveAnswers) ? Object.values(objectiveAnswers.reduce((result, answer) => { const item = { questionIndex: Number(answer.questionIndex), selectedOptionIndex: Number(answer.selectedOptionIndex) }; result[item.questionIndex] = item; return result; }, {})) : [];
+      const normalizedTheoryAnswers = Array.isArray(theoryAnswers) ? Object.values(theoryAnswers.reduce((result, answer) => { const item = { questionIndex: Number(answer.questionIndex), answerText: typeof answer.answerText === "string" ? answer.answerText.trim() : "" }; result[item.questionIndex] = item; return result; }, {})) : [];
+      const invalidObjective = normalizedObjectiveAnswers.some((answer) => !Number.isInteger(answer.questionIndex) || answer.questionIndex < 0 || answer.questionIndex >= structuredAssignment.objectiveQuestions.length || !Number.isInteger(answer.selectedOptionIndex) || answer.selectedOptionIndex < 0 || answer.selectedOptionIndex > 3);
+      const invalidTheory = normalizedTheoryAnswers.some((answer) => !Number.isInteger(answer.questionIndex) || answer.questionIndex < 0 || answer.questionIndex >= structuredAssignment.theoryQuestions.length);
+      if (invalidObjective || invalidTheory) return res.status(400).json({ success: false, message: "One or more answers are invalid." });
+
+      const objectiveScore = normalizedObjectiveAnswers.reduce((score, answer) => {
+        const question = structuredAssignment.objectiveQuestions[answer.questionIndex];
+        return score + (question.correctOptionIndex === answer.selectedOptionIndex ? question.marks : 0);
+      }, 0);
+      const existing = await Submission.findOne({ student: req.user._id, assignment: structuredAssignment._id }).lean();
+      if (existing) return res.status(409).json({ success: false, message: "You have already submitted this assignment." });
+      await Submission.create({
+        // Keep legacy identifiers populated as they are required by the shared
+        // submission schema and are used by existing reporting screens.
+        studentId: req.user._id,
+        courseId,
+        assignmentId: structuredAssignment._id,
+        assignmentTitle: structuredAssignment.title,
+        assignment: structuredAssignment._id,
+        student: req.user._id,
+        objectiveAnswers: normalizedObjectiveAnswers,
+        theoryAnswers: normalizedTheoryAnswers,
+        objectiveScore,
+        theoryScore: 0,
+        totalScore: objectiveScore,
+        status: "SUBMITTED",
+      });
+      return res.json({ success: true, message: "Assignment submitted. Objective questions were scored automatically.", objectiveScore });
+    }
+
+    if (!submissionData) return res.status(400).json({ success: false, message: "Your submission is required." });
+
     const assignment = assignmentId
       ? course.assignments?.find((item) => item._id.toString() === assignmentId)
       : course.assignments?.find((item) => item.title === assignmentTitle);
 
     if (!assignment) {
       return res.status(404).json({ success: false, message: "Assignment not found for this course." });
+    }
+
+    if (assignment.dueDate && hasDeadlinePassed(assignment.dueDate)) {
+      return res.status(400).json({ success: false, message: "This assignment is closed because its due date has passed." });
     }
 
     const existingSubmission = await Submission.findOne({

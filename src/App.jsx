@@ -11,7 +11,7 @@ import StudentLogin from './pages/StudentLogin';
 import ParentLogin from './pages/ParentLogin';
 import ParentSignup from './pages/ParentSignup';
 import ParentDashboard from './pages/ParentDashboard';
-import AdminPanel from './Components/AdminWorkspace';
+import AdminWorkspace from './Components/AdminWorkspace';
 import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherTimetable from './pages/TeacherTimetable';
 import TeacherAttendance from './pages/TeacherAttendance';
@@ -71,7 +71,7 @@ const App = () => {
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={["ADMIN"]}>
-                <AdminPanel />
+                <AdminWorkspace />
               </ProtectedRoute>
             }
           />

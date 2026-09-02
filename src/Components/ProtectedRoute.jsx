@@ -28,8 +28,10 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
           return;
         }
       } catch {
-        // keep the route available for frontend work if the backend is offline,
-        // but still clear invalid auth on explicit authorization failures.
+        if (isMounted) {
+          localStorage.removeItem("lmsAuth");
+          setIsInvalid(true);
+        }
       }
     };
 

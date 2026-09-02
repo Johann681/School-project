@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Info, Mail, Menu as MenuIcon, X as XIcon, UserCheck } from 'lucide-react';
 import { Phone } from 'react-feather';
@@ -15,25 +15,25 @@ const navItems = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
       // Smart navbar hide/show on scroll
-      if (currentScrollY < lastScrollY || currentScrollY < 50) {
+      if (currentScrollY < lastScrollY.current || currentScrollY < 50) {
         setShowNavbar(true); 
       } else {
         setShowNavbar(false); 
       }
 
-      setLastScrollY(currentScrollY);
+      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+  }, []);
 
   return (
     <nav

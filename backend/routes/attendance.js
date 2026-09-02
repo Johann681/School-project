@@ -2,12 +2,10 @@ const express = require("express");
 const router = express.Router();
 const xss = require("xss");
 const Attendance = require("../models/Attendance");
-const ClassModel = require("../models/Class");
 const Course = require("../models/Course");
 const User = require("../models/User");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const { auditLogger } = require("../middleware/auditLog");
-const SubjectAssignment = require("../models/SubjectAssignment");
 const TimetableSlot = require("../models/TimetableSlot");
 
 const sanitize = (value) => {

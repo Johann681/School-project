@@ -4,7 +4,7 @@ import classImage from "../assets/class.jpg";
 import libraryImg from "../assets/libary.jpg";
 import musicImg from "../assets/music (1).jpg";
 import labImg from "../assets/lab.jpg";
-import { BookOpen, Users, MapPin, ArrowRight } from "lucide-react";
+import { BookOpen, Users, MapPin, ArrowRight, GraduationCap, Sparkles, ArrowUpRight } from "lucide-react";
 import { FaBook, FaMusic, FaFlask, FaChalkboardTeacher } from "react-icons/fa";
 
 const Home = () => {
@@ -35,13 +35,19 @@ const Home = () => {
     },
   ];
 
+  const pathways = [
+    { label: "Junior School", range: "JSS 1–3", desc: "A confident foundation in core subjects, practical learning, and character development.", color: "bg-[#e7f0ec]", Icon: BookOpen },
+    { label: "Senior School", range: "SS 1–3", desc: "Focused preparation for external examinations with room to discover a clear direction.", color: "bg-[#f5eadb]", Icon: GraduationCap },
+    { label: "Whole-child growth", range: "Beyond the classroom", desc: "A balanced community where leadership, creativity, discipline, and service matter.", color: "bg-[#e8edf6]", Icon: Sparkles },
+  ];
+
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Professional Announcement */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-24 md:pt-28">
         <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 text-[10px] sm:text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full shadow-sm">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-          Enrollment Now Open for 2025/2026 Session
+          Enrollment Now Open for 2026/2027 Session
         </div>
       </div>
 
@@ -98,6 +104,37 @@ const Home = () => {
               className="rounded-3xl shadow-2xl w-full object-cover aspect-[4/3] relative z-10"
             />
           </div>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-slate-900 text-white">
+        <div className="mx-auto grid max-w-7xl gap-px bg-slate-700/60 sm:grid-cols-2 lg:grid-cols-4">
+          {["Since 2006", "JSS 1 – SS 3", "Focused class sizes", "A culture of excellence"].map((item, index) => (
+            <div key={item} className="bg-slate-900 px-6 py-7 sm:px-8">
+              <p className="text-2xl font-black tracking-tight text-white">{item}</p>
+              <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">{["Established", "School journey", "Personal attention", "Our standard"][index]}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-24 sm:px-8 lg:px-12">
+        <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-700">A place to grow</p>
+            <h2 className="mt-3 text-3xl font-black leading-tight text-slate-900 sm:text-5xl">Every stage has its own <span className="text-blue-700">moment.</span></h2>
+          </div>
+          <p className="max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">From the first day of junior school to the confidence of senior school, our learning experience is designed to meet students where they are and help them move forward with purpose.</p>
+        </div>
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {pathways.map(({ label, range, desc, color, Icon }) => (
+            <article key={label} className={`${color} group relative overflow-hidden rounded-2xl p-7 transition-transform duration-300 hover:-translate-y-1`}>
+              <div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/80 text-slate-900"><Icon className="h-5 w-5" /></div><ArrowUpRight className="h-5 w-5 text-slate-500 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" /></div>
+              <p className="mt-12 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{range}</p>
+              <h3 className="mt-2 text-2xl font-black text-slate-900">{label}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-700">{desc}</p>
+            </article>
+          ))}
         </div>
       </section>
 

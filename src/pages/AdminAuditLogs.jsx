@@ -70,6 +70,7 @@ const AdminAuditLogs = () => {
   return (
     <DashboardLayout
       role="Audit Oversight"
+      navigationRole="Administration"
       title={`Audit Logs for ${adminName}`}
       subtitle="Monitor write actions across the system and filter by user or role."
       userName={adminName}

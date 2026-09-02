@@ -7,18 +7,19 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Welcome to the Learning Platform
+        <div className="mb-14 text-center">
+          <p className="mb-4 text-[10px] font-black uppercase tracking-[0.28em] text-blue-700">Greater Access Private Schools</p>
+          <h1 className="mb-6 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+            Your school, <span className="text-blue-700">connected.</span>
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
             Select your role to access the Greater Access Private Schools management system.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="mx-auto grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {/* Student Login */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all p-8 text-center flex flex-col">
+          <div className="group flex flex-col rounded-2xl border border-blue-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <GraduationCap className="h-8 w-8 text-blue-700" />
             </div>
@@ -35,7 +36,7 @@ const Login = () => {
           </div>
 
           {/* Teacher Login */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all p-8 text-center flex flex-col">
+          <div className="group flex flex-col rounded-2xl border border-violet-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
             <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <UserRoundCheck className="h-8 w-8 text-purple-700" />
             </div>
@@ -52,7 +53,7 @@ const Login = () => {
           </div>
 
           {/* Administrator Login */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all p-8 text-center flex flex-col">
+          <div className="group flex flex-col rounded-2xl border border-rose-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <ShieldCheck className="h-8 w-8 text-red-700" />
             </div>
@@ -69,7 +70,7 @@ const Login = () => {
           </div>
 
           {/* Parent Login */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all p-8 text-center flex flex-col">
+          <div className="group flex flex-col rounded-2xl border border-emerald-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <UserRoundCheck className="h-8 w-8 text-emerald-700" />
             </div>

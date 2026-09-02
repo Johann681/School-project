@@ -84,7 +84,7 @@ const NewSection = () => {
           >
             <span className="inline-flex items-center gap-2 text-blue-700 font-bold uppercase tracking-[0.25em] text-[10px] mb-8 bg-blue-50 border border-blue-100 px-5 py-2.5 rounded-full shadow-sm">
               <CalendarCheck className="w-3.5 h-3.5" />
-              Academic Session 2025 / 2026
+              Academic Session 2026 / 2027
             </span>
           </motion.div>
 

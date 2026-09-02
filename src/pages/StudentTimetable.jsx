@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, Clock3, LayoutGrid, RefreshCcw } from "lucide-react";
 import api from "../api/axiosClient";
@@ -23,7 +23,7 @@ const StudentTimetable = () => {
     window.setTimeout(() => setStatus({ type: "", message: "" }), 4500);
   };
 
-  const fetchTimetable = async () => {
+  const fetchTimetable = useCallback(async () => {
     if (!token) {
       navigate("/login");
       return;
@@ -38,11 +38,11 @@ const StudentTimetable = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, token]);
 
   useEffect(() => {
     fetchTimetable();
-  }, [token]);
+  }, [fetchTimetable]);
 
   const scheduleSummary = useMemo(() => {
     if (!timetable.length) return "No timetable published yet.";
@@ -52,6 +52,7 @@ const StudentTimetable = () => {
   return (
     <DashboardLayout
       role="Student Timetable"
+      navigationRole="Student Portal"
       title={`Your Weekly Schedule, ${studentName}`}
       subtitle="Check period assignments, teacher names, and room details for the current week."
       userName={studentName}

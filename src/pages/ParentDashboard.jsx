@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, CalendarDays, FileText, HeartHandshake, RefreshCcw, ShieldCheck } from "lucide-react";
+import { Bell, CalendarDays, CheckCircle2, FileText, HeartHandshake, RefreshCcw, ShieldCheck, TrendingUp, TriangleAlert } from "lucide-react";
 import api from "../api/axiosClient";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Panel from "../components/dashboard/Panel";
@@ -28,7 +28,7 @@ const ParentDashboard = () => {
     window.setTimeout(() => setStatus({ type: "", message: "" }), 4500);
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!token) {
       navigate("/login");
       return;
@@ -43,7 +43,7 @@ const ParentDashboard = () => {
       ]);
 
       setChildrenResults(childrenRes.data.children || []);
-      if (!selectedChildId && childrenRes.data.children?.[0]) setSelectedChildId(childrenRes.data.children[0].studentId);
+      setSelectedChildId((current) => current || childrenRes.data.children?.[0]?.studentId || "");
       setAnnouncements(announcementRes.data.announcements || []);
     } catch (err) {
       console.error(err);
@@ -51,17 +51,25 @@ const ParentDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate, token]);
 
   useEffect(() => {
     fetchData();
-  }, [token]);
+  }, [fetchData]);
 
   const tabs = [
     { id: "children", label: "Children Results", count: childrenResults.length },
     { id: "announcements", label: "Announcements", count: announcements.length },
   ];
   const selectedChild = childrenResults.find((child) => child.studentId === selectedChildId) || childrenResults[0];
+  const selectedAttendance = selectedChild?.attendance || [];
+  const attendanceRecords = selectedAttendance.flatMap((entry) => entry.records || []);
+  const attendancePresent = attendanceRecords.filter((record) => record.status === "PRESENT").length;
+  const attendanceRate = attendanceRecords.length ? Math.round((attendancePresent / attendanceRecords.length) * 100) : null;
+  const selectedSubmissions = selectedChild?.submissions || [];
+  const pendingSubmissions = selectedSubmissions.filter((submission) => submission.status !== "GRADED" && submission.status !== "RELEASED").length;
+  const selectedAbsences = attendanceRecords.filter((record) => record.status === "ABSENT").length;
+  const alertCount = childrenResults.reduce((total, child) => total + (child.submissions || []).filter((submission) => submission.status !== "GRADED" && submission.status !== "RELEASED").length, 0) + childrenResults.reduce((total, child) => total + (child.attendance || []).flatMap((entry) => entry.records || []).filter((record) => record.status === "ABSENT").length, 0);
 
   const loadChildTimetable = async () => {
     if (!selectedChild) return;
@@ -75,6 +83,7 @@ const ParentDashboard = () => {
       title={`Welcome, ${parentName}`}
       subtitle="Review your linked children’s progress and school announcements from one place."
       userName={parentName}
+      notifications={childrenResults.flatMap((child) => (child.submissions || []).filter((submission) => !["GRADED", "RELEASED"].includes(submission.status)).map((submission) => ({ id: `${child.studentId}-${submission._id}`, title: `${child.studentName} has submitted work`, message: submission.assignmentTitle || "An assignment is awaiting teacher review." }))).slice(0, 9)}
       onLogout={() => {
         localStorage.removeItem("lmsAuth");
         navigate("/login");
@@ -82,7 +91,7 @@ const ParentDashboard = () => {
       stats={[
         { label: "Children linked", value: childrenResults.length || 0, icon: HeartHandshake },
         { label: "Recent updates", value: announcements.length || 0, icon: Bell },
-        { label: "Active alerts", value: "—", icon: ShieldCheck },
+        { label: "Active alerts", value: alertCount, icon: alertCount ? TriangleAlert : ShieldCheck },
         { label: "Refreshed", value: isLoading ? "Loading..." : "Live", icon: RefreshCcw },
       ]}
       actions={
@@ -95,6 +104,10 @@ const ParentDashboard = () => {
         <TabGroup tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
       </div>
 
+      {activeTab === "children" && selectedChild && <div className="mb-6 grid gap-4 md:grid-cols-3"><Panel title="Attendance" description="Based on the latest recorded sessions."><div className="flex items-center gap-3"><CheckCircle2 className="h-8 w-8 text-emerald-600" /><p className="text-3xl font-bold text-slate-900">{attendanceRate === null ? "—" : `${attendanceRate}%`}</p></div><p className="mt-2 text-sm text-slate-500">{attendanceRecords.length ? `${attendancePresent} of ${attendanceRecords.length} sessions present.` : "No attendance records yet."}</p></Panel><Panel title="Assignment progress" description={`Recent work for ${selectedChild.studentName}.`}><div className="flex items-center gap-3"><FileText className="h-8 w-8 text-indigo-600" /><p className="text-3xl font-bold text-slate-900">{selectedSubmissions.length}</p></div><p className="mt-2 text-sm text-slate-500">{pendingSubmissions ? `${pendingSubmissions} awaiting teacher review.` : "No submissions awaiting review."}</p></Panel><Panel title="Latest performance" description="Your child’s recent academic result."><div className="flex items-center gap-3"><TrendingUp className="h-8 w-8 text-amber-600" /><p className="text-3xl font-bold text-slate-900">{selectedChild.latestGrade ?? "—"}{selectedChild.latestGrade !== null && selectedChild.latestGrade !== undefined ? "/100" : ""}</p></div><p className="mt-2 text-sm text-slate-500">{selectedChild.summary || "No graded work published yet."}</p></Panel></div>}
+
+      {activeTab === "children" && selectedChild && (pendingSubmissions > 0 || selectedAbsences > 0) && <Panel title="Needs attention" description="Recent items that may need a parent’s attention." className="mb-6"><div className="grid gap-2 sm:grid-cols-2">{pendingSubmissions > 0 && <div className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900"><FileText className="h-5 w-5 shrink-0" /><span>{selectedChild.studentName} has {pendingSubmissions} submitted assignment{pendingSubmissions === 1 ? "" : "s"} awaiting review.</span></div>}{selectedAbsences > 0 && <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><TriangleAlert className="h-5 w-5 shrink-0" /><span>{selectedChild.studentName} has {selectedAbsences} recent absence record{selectedAbsences === 1 ? "" : "s"} to review.</span></div>}</div></Panel>}
+
       {activeTab === "children" ? (
         <Panel title="Children Performance" description="A quick view of your linked learners and their latest graded results.">
           {childrenResults.length === 0 ? (
@@ -105,7 +118,7 @@ const ParentDashboard = () => {
             />
           ) : (
             <div className="space-y-4">
-              {childrenResults.length > 1 && <select className="dash-input" value={selectedChild?.studentId || ""} onChange={(event) => setSelectedChildId(event.target.value)} aria-label="Select child">
+              {childrenResults.length > 1 && <select className="dash-input" value={selectedChild?.studentId || ""} onChange={(event) => { setSelectedChildId(event.target.value); setChildTimetable([]); }} aria-label="Select child">
                 {childrenResults.map((child) => <option key={child.studentId} value={child.studentId}>{child.studentName}</option>)}
               </select>}
               {[selectedChild].filter(Boolean).map((child) => (
@@ -113,11 +126,12 @@ const ParentDashboard = () => {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-lg font-semibold text-slate-900">{child.studentName}</p>
-                      <p className="text-sm text-slate-500">Linked student ID: {child.studentId}</p>
+                      <p className="text-sm text-slate-500">{child.studentClass || "Class not assigned"}{child.academicSession ? ` · ${child.academicSession}` : ""}</p>
                     </div>
                     <Badge variant="info">{child.latestGrade ?? "No grade yet"}</Badge>
                   </div>
                   <p className="mt-4 text-sm text-slate-600">{child.summary || "No recent grades have been published."}</p>
+                  {child.performance?.length > 0 && <div className="mt-4 grid gap-2 sm:grid-cols-2">{child.performance.slice(0, 4).map((record) => <div key={record._id} className="rounded-lg bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-semibold text-slate-800">{record.assignmentTitle}</p><Badge variant={record.score >= 50 ? "success" : "danger"}>{record.score}/100</Badge></div><p className="mt-1 text-xs text-slate-500">{record.courseId?.title || "Course"} · {new Date(record.gradedAt).toLocaleDateString()}</p></div>)}</div>}
                   <div className="mt-4 border-t border-slate-100 pt-4">
                     <p className="text-sm font-semibold text-slate-800">Assignment submissions</p>
                     <p className="mt-1 text-sm text-slate-600">{child.submissions?.length || 0} submitted assignments in recent activity.</p>

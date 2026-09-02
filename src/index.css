@@ -1,8 +1,47 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    color: #172033;
+    background: #f6f7f9;
+  }
+
   body {
     @apply antialiased text-slate-900;
+    margin: 0;
+    min-width: 320px;
+    background: #f6f7f9;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled),
+  a {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 3px solid rgb(14 165 233 / 0.55);
+    outline-offset: 2px;
   }
 }
 
@@ -42,4 +81,54 @@
   .dash-table tbody tr {
     @apply border-b border-slate-100 transition hover:bg-slate-50/80;
   }
+}
+
+.dashboard-dark {
+  color: #e2e8f0;
+  background: linear-gradient(135deg, #0f172a, #172033 48%, #111827);
+}
+
+.dashboard-dark header,
+.dashboard-dark aside,
+.dashboard-dark nav,
+.dashboard-dark section,
+.dashboard-dark article,
+.dashboard-dark .bg-white,
+.dashboard-dark .bg-white\/90 {
+  border-color: #334155;
+  background-color: #172033;
+  color: #e2e8f0;
+}
+
+.dashboard-dark .bg-slate-50,
+.dashboard-dark .bg-slate-50\/70,
+.dashboard-dark .bg-slate-50\/80,
+.dashboard-dark .bg-slate-100 {
+  background-color: #1e293b;
+}
+
+.dashboard-dark .text-slate-900,
+.dashboard-dark .text-slate-800,
+.dashboard-dark .text-slate-700 {
+  color: #f8fafc;
+}
+
+.dashboard-dark .text-slate-600,
+.dashboard-dark .text-slate-500,
+.dashboard-dark .text-slate-400 {
+  color: #cbd5e1;
+}
+
+.dashboard-dark .border-slate-100,
+.dashboard-dark .border-slate-200,
+.dashboard-dark .border-slate-300 {
+  border-color: #334155;
+}
+
+.dashboard-dark input,
+.dashboard-dark select,
+.dashboard-dark textarea {
+  border-color: #475569;
+  background-color: #0f172a;
+  color: #f8fafc;
 }
