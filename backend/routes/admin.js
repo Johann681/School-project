@@ -14,6 +14,7 @@ const Subject = require("../models/Subject");
 const SubjectAssignment = require("../models/SubjectAssignment");
 const TimetableSlot = require("../models/TimetableSlot");
 const AcademicPeriod = require("../models/AcademicPeriod");
+const StudentResult = require("../models/StudentResult");
 const { PERIOD_SCHEDULE } = require("../config/timetableSchedule");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const { auditLogger } = require("../middleware/auditLog");
@@ -70,27 +71,42 @@ router.post("/courses/:courseId/register-student/:studentId", async (req, res) =
 
 router.get("/courses", async (req, res) => {
   const courses = await Course.find()
-    .select("title code targetClass teachers")
-    .populate("targetClass", "name")
+    .select("title code subject targetClass teachers")
+    .populate("subject", "name code")
+    .populate("targetClass", "name level section academicSession")
     .populate("teachers", "fullName email")
     .sort({ title: 1 })
     .lean();
   return res.json({ success: true, courses });
 });
 
+router.post("/results", async (req, res) => {
+  try {
+    const student = await User.findOne({ _id: req.body.studentId, role: "STUDENT" }).select("_id").lean();
+    const title = sanitize(req.body.title);
+    const reportText = sanitize(req.body.reportText);
+    const imageUrl = sanitize(req.body.imageUrl);
+    if (!student || !title || (!reportText && !imageUrl)) return res.status(400).json({ success: false, message: "Student, result title, and report text or image URL are required." });
+    const result = await StudentResult.create({ student: student._id, title, resultType: req.body.resultType, session: sanitize(req.body.session), term: req.body.term, reportText, imageUrl, publishedBy: req.user._id });
+    return res.status(201).json({ success: true, result });
+  } catch (err) {
+    console.error("Publish student result error:", err);
+    return res.status(500).json({ success: false, message: "Unable to publish student result." });
+  }
+});
+
 router.post("/classes", async (req, res) => {
   try {
     const level = sanitize(req.body.level);
     const section = sanitize(req.body.section).toUpperCase();
-    const academicSession = sanitize(req.body.academicSession);
     const name = sanitize(req.body.name || `${level}${section}`);
-    if (!level || !section || !academicSession) {
-      return res.status(400).json({ success: false, message: "Level, section, and academic session are required." });
+    if (!level || !section) {
+      return res.status(400).json({ success: false, message: "Level and section are required." });
     }
-    const classRecord = await Class.create({ name, level, section, academicSession, classTeacher: req.body.classTeacher || undefined });
+    const classRecord = await Class.create({ name, level, section, classTeacher: req.body.classTeacher || undefined });
     return res.status(201).json({ success: true, class: classRecord });
   } catch (err) {
-    if (err.code === 11000) return res.status(409).json({ success: false, message: "That class already exists for this academic session." });
+    if (err.code === 11000) return res.status(409).json({ success: false, message: "That class already exists." });
     console.error("Create Class Error:", err);
     return res.status(500).json({ success: false, message: "Unable to create class." });
   }
@@ -112,9 +128,22 @@ router.patch("/classes/:id", async (req, res) => {
 });
 
 router.delete("/classes/:id", async (req, res) => {
-  const classRecord = await Class.findByIdAndDelete(req.params.id);
+  const classRecord = await Class.findById(req.params.id);
   if (!classRecord) return res.status(404).json({ success: false, message: "Class not found." });
-  await Promise.all([SubjectAssignment.deleteMany({ class: req.params.id }), TimetableSlot.deleteMany({ class: req.params.id })]);
+  const courses = await Course.find({ targetClass: req.params.id }).select("_id").lean();
+  const courseIds = courses.map((course) => course._id);
+  await Promise.all([
+    Class.deleteOne({ _id: req.params.id }),
+    SubjectAssignment.deleteMany({ class: req.params.id }),
+    TimetableSlot.deleteMany({ class: req.params.id }),
+    User.updateMany({ studentClass: req.params.id }, { $unset: { studentClass: "" } }),
+    User.updateMany({ assignedClasses: req.params.id }, { $pull: { assignedClasses: req.params.id } }),
+    Submission.deleteMany({ courseId: { $in: courseIds } }),
+    Performance.deleteMany({ courseId: { $in: courseIds } }),
+    EnrollmentRequest.deleteMany({ courseId: { $in: courseIds } }),
+    User.updateMany({ enrolledCourses: { $in: courseIds } }, { $pull: { enrolledCourses: { $in: courseIds } } }),
+    Course.deleteMany({ _id: { $in: courseIds } }),
+  ]);
   return res.json({ success: true });
 });
 
@@ -145,36 +174,52 @@ router.patch("/subjects/:id", async (req, res) => {
 });
 
 router.delete("/subjects/:id", async (req, res) => {
-  const subject = await Subject.findByIdAndDelete(req.params.id);
+  const subject = await Subject.findById(req.params.id);
   if (!subject) return res.status(404).json({ success: false, message: "Subject not found." });
-  await SubjectAssignment.deleteMany({ subject: req.params.id });
+  const assignmentIds = await SubjectAssignment.find({ subject: req.params.id }).distinct("_id");
+  const courses = await Course.find({ $or: [{ subject: req.params.id }, { title: subject.name }] }).select("_id").lean();
+  const courseIds = courses.map((course) => course._id);
+  await Promise.all([
+    Subject.deleteOne({ _id: req.params.id }),
+    SubjectAssignment.deleteMany({ subject: req.params.id }),
+    TimetableSlot.deleteMany({ subjectAssignment: { $in: assignmentIds } }),
+    Submission.deleteMany({ courseId: { $in: courseIds } }),
+    Performance.deleteMany({ courseId: { $in: courseIds } }),
+    EnrollmentRequest.deleteMany({ courseId: { $in: courseIds } }),
+    User.updateMany({ enrolledCourses: { $in: courseIds } }, { $pull: { enrolledCourses: { $in: courseIds } } }),
+    Course.deleteMany({ _id: { $in: courseIds } }),
+  ]);
   return res.json({ success: true });
 });
 
 router.post("/subject-assignments", async (req, res) => {
   try {
     const periodsPerWeek = Number(req.body.periodsPerWeek);
-    if (!req.body.subject || !req.body.class || !req.body.teacher || !Number.isInteger(periodsPerWeek) || periodsPerWeek < 1 || periodsPerWeek > 40) {
+    const teacherIds = Array.isArray(req.body.teachers) ? req.body.teachers : [req.body.teacher];
+    if (!req.body.subject || !req.body.class || teacherIds.length !== 1 || !Number.isInteger(periodsPerWeek) || periodsPerWeek < 1 || periodsPerWeek > 40) {
       return res.status(400).json({ success: false, message: "Subject, class, teacher, and periods per week are required." });
     }
-    const [subject, classRecord, teacher] = await Promise.all([
+    const [subject, classRecord, teachers] = await Promise.all([
       Subject.findById(req.body.subject),
       Class.findById(req.body.class),
-      User.findOne({ _id: req.body.teacher, role: "TEACHER" }),
+      User.find({ _id: { $in: teacherIds }, role: "TEACHER" }),
     ]);
-    if (!subject || !classRecord || !teacher) return res.status(404).json({ success: false, message: "Subject, class, or teacher not found." });
-    const assignment = await SubjectAssignment.create({ subject: subject._id, class: classRecord._id, teacher: teacher._id, periodsPerWeek });
+    if (!subject || !classRecord || teachers.length !== new Set(teacherIds.map(String)).size) return res.status(404).json({ success: false, message: "Subject, class, or teacher not found." });
+    const existingSameClass = await SubjectAssignment.findOne({ subject: subject._id, class: classRecord._id }).populate("teacher", "fullName").lean();
+    if (existingSameClass) {
+      return res.status(409).json({ success: false, message: `${subject.name} is already assigned to ${classRecord.name} with ${existingSameClass.teacher?.fullName || "a teacher"}. A course can only be assigned once per class.` });
+    }
+    const assignments = await SubjectAssignment.create(teachers.map((teacher) => ({ subject: subject._id, class: classRecord._id, teacher: teacher._id, periodsPerWeek })));
     const courseCode = `${subject.code}-${classRecord.name}`.replace(/[^A-Z0-9-]/gi, "-").toUpperCase();
     const existingCourse = await Course.findOne({ targetClass: classRecord._id, title: subject.name });
     if (existingCourse) {
-      if (!existingCourse.teachers.some((id) => id.toString() === teacher._id.toString())) {
-        existingCourse.teachers.push(teacher._id);
-        await existingCourse.save();
-      }
+      existingCourse.teachers = [...new Set([...existingCourse.teachers.map(String), ...teachers.map((teacher) => teacher._id.toString())])];
+      existingCourse.subject = subject._id;
+      await existingCourse.save();
     } else {
-      await Course.create({ title: subject.name, code: courseCode, targetClass: classRecord._id, teachers: [teacher._id], materials: [], assignments: [] });
+      await Course.create({ title: subject.name, code: courseCode, subject: subject._id, targetClass: classRecord._id, teachers: teachers.map((teacher) => teacher._id), materials: [], assignments: [] });
     }
-    return res.status(201).json({ success: true, assignment });
+    return res.status(201).json({ success: true, assignments });
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ success: false, message: "That subject is already assigned to this class." });
     return res.status(500).json({ success: false, message: "Unable to create subject assignment." });
@@ -223,6 +268,16 @@ router.post("/timetable/generate", async (req, res) => {
     console.error("Generate Timetable Error:", err);
     return res.status(500).json({ success: false, message: "Unable to generate timetable." });
   }
+});
+
+router.delete("/subject-assignments/:id", async (req, res) => {
+  const assignment = await SubjectAssignment.findByIdAndDelete(req.params.id);
+  if (!assignment) return res.status(404).json({ success: false, message: "Subject assignment not found." });
+  await TimetableSlot.deleteMany({ subjectAssignment: assignment._id });
+  const remaining = await SubjectAssignment.find({ subject: assignment.subject, class: assignment.class }).distinct("teacher");
+  await Course.updateOne({ subject: assignment.subject, targetClass: assignment.class }, { $pull: { teachers: assignment.teacher } });
+  if (!remaining.length) await Course.deleteOne({ subject: assignment.subject, targetClass: assignment.class });
+  return res.json({ success: true });
 });
 
 router.get("/timetable", async (req, res) => {
@@ -401,6 +456,17 @@ router.get("/account-students", async (req, res) => {
   }
 });
 
+router.patch("/account-students/:id", async (req, res) => {
+  const updates = {};
+  if (req.body.fullName !== undefined) updates.fullName = sanitize(req.body.fullName);
+  if (req.body.email !== undefined) updates.email = sanitize(req.body.email).toLowerCase();
+  if (req.body.classRef !== undefined) updates.studentClass = req.body.classRef || undefined;
+  const student = await User.findOneAndUpdate({ _id: req.params.id, role: "STUDENT" }, updates, { new: true, runValidators: true })
+    .populate("studentClass", "name level section academicSession");
+  if (!student) return res.status(404).json({ success: false, message: "LMS student account not found." });
+  return res.json({ success: true, student });
+});
+
 router.delete("/account-students/:id", async (req, res) => {
   try {
     const student = await User.findOne({ _id: req.params.id, role: "STUDENT" }).lean();
@@ -448,6 +514,15 @@ router.get("/teachers", async (req, res) => {
   }
 });
 
+router.patch("/teachers/:id", async (req, res) => {
+  const updates = {};
+  if (req.body.fullName !== undefined) updates.fullName = sanitize(req.body.fullName);
+  if (req.body.email !== undefined) updates.email = sanitize(req.body.email).toLowerCase();
+  const teacher = await User.findOneAndUpdate({ _id: req.params.id, role: "TEACHER" }, updates, { new: true, runValidators: true }).select("fullName email createdAt");
+  if (!teacher) return res.status(404).json({ success: false, message: "Teacher account not found." });
+  return res.json({ success: true, teacher });
+});
+
 router.delete("/teachers/:id", async (req, res) => {
   try {
     const teacherId = req.params.id;
@@ -465,6 +540,9 @@ router.delete("/teachers/:id", async (req, res) => {
     await Course.updateMany({ teachers: teacherId }, { $pull: { teachers: teacherId } });
     await Course.updateMany({ teacherId }, { $unset: { teacherId: "" } });
     await Course.deleteMany({ teacherId, teachers: { $size: 0 } });
+    const assignments = await SubjectAssignment.find({ teacher: teacherId }).select("_id subject class").lean();
+    await SubjectAssignment.deleteMany({ teacher: teacherId });
+    await TimetableSlot.deleteMany({ subjectAssignment: { $in: assignments.map((assignment) => assignment._id) } });
     await User.findByIdAndDelete(teacherId);
 
     return res.json({ success: true, message: "Teacher account and linked course data removed." });

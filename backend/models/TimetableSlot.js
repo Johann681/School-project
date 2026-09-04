@@ -9,6 +9,7 @@ const timetableSlotSchema = new mongoose.Schema(
     period: { type: Number, required: true, min: 1, max: 8 },
     startTime: { type: String, required: true, trim: true },
     endTime: { type: String, required: true, trim: true },
+    room: { type: String, trim: true, default: "" },
     subjectAssignment: { type: mongoose.Schema.Types.ObjectId, ref: "SubjectAssignment", default: null },
   },
   { timestamps: true }

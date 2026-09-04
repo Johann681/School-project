@@ -7,6 +7,7 @@ const Course = require("../models/Course");
 const Performance = require("../models/Performance");
 const Submission = require("../models/Submission");
 const TimetableSlot = require("../models/TimetableSlot");
+const StudentResult = require("../models/StudentResult");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 router.use(requireAuth, requireRole("PARENT"));
@@ -40,6 +41,7 @@ router.get("/children/results", async (req, res) => {
           Performance.find({ studentId: student._id }).sort({ gradedAt: -1 }).limit(10).populate("courseId", "title").lean(),
           Submission.find({ studentId: student._id }).sort({ createdAt: -1 }).limit(20).lean(),
         ]);
+        const publishedResults = await StudentResult.find({ student: student._id }).sort({ publishedAt: -1 }).lean();
         const averageScore = performance.length
           ? Math.round(performance.reduce((total, record) => total + record.score, 0) / performance.length)
           : null;
@@ -54,6 +56,7 @@ router.get("/children/results", async (req, res) => {
           summary: averageScore === null ? null : `Average score across recent graded work: ${averageScore}%`,
           performance,
           submissions,
+          publishedResults,
           courses: courses.map((course) => ({
             _id: course._id,
             title: course.title,

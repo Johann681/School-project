@@ -25,6 +25,16 @@ const normalizeDueDate = (value) => {
   return dueDate;
 };
 
+const isDeadlineWithinOneDay = (value) => {
+  if (!value) return true;
+  const deadline = normalizeDueDate(value);
+  if (!deadline) return false;
+  const tomorrow = new Date();
+  tomorrow.setHours(23, 59, 59, 999);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return deadline <= tomorrow;
+};
+
 router.use(requireAuth, requireRole("TEACHER"));
 
 router.get("/timetable", async (req, res) => {
@@ -99,6 +109,7 @@ router.get("/courses", async (req, res) => {
     const courses = await Course.find({ teachers: req.user._id })
       .lean()
       .select("title code targetClass materials assignments")
+      .populate("targetClass", "name level section academicSession")
       .sort({ createdAt: -1 });
 
     const structuredAssignments = await Assignment.find({
@@ -466,6 +477,12 @@ router.post("/grade-structured-submission/:submissionId", async (req, res) => {
     submission.totalScore = submission.objectiveScore + theoryScore;
     submission.status = "GRADED";
     await submission.save();
+    const score = assignment.totalMarks ? Math.round((submission.totalScore / assignment.totalMarks) * 100) : submission.totalScore;
+    await Performance.findOneAndUpdate(
+      { studentId: submission.student, courseId: submission.courseId, assignmentId: submission.assignment },
+      { studentId: submission.student, courseId: submission.courseId, assignmentId: submission.assignment, assignmentTitle: assignment.title, score, focusAreas: `Score: ${submission.totalScore}/${assignment.totalMarks || submission.totalScore}`, gradedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
     res.json({ success: true, submission });
   } catch (err) {
     console.error("Grade structured submission error:", err);
@@ -500,6 +517,12 @@ router.post(
           });
       submission.status = "RELEASED";
       await submission.save();
+      const score = assignment.totalMarks ? Math.round((submission.totalScore / assignment.totalMarks) * 100) : submission.totalScore;
+      await Performance.findOneAndUpdate(
+        { studentId: submission.student, courseId: submission.courseId, assignmentId: submission.assignment },
+        { studentId: submission.student, courseId: submission.courseId, assignmentId: submission.assignment, assignmentTitle: assignment.title, score, focusAreas: `Score: ${submission.totalScore}/${assignment.totalMarks || submission.totalScore}`, gradedAt: new Date() },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
       res.json({
         success: true,
         message: "Objective score released to the student.",
@@ -542,6 +565,9 @@ router.post("/assignments/:courseId", async (req, res) => {
           success: false,
           message: "Add a title and at least one objective or theory question.",
         });
+    }
+    if (!isDeadlineWithinOneDay(req.body.dueDate)) {
+      return res.status(400).json({ success: false, message: "Assignment deadlines can only be set for today or tomorrow." });
     }
 
     const subject = await Subject.findOne({ name: course.title }).lean();
@@ -632,8 +658,10 @@ router.post("/assignments/:courseId", async (req, res) => {
 
 router.patch("/assignments/:assignmentId", async (req, res) => {
   try {
-    const assignment = await Assignment.findOne({ _id: req.params.assignmentId, teacher: req.user._id });
+    const assignment = await Assignment.findById(req.params.assignmentId);
     if (!assignment) return res.status(404).json({ success: false, message: "Assignment not found or access denied." });
+    const course = await Course.findOne({ _id: assignment.course, teachers: req.user._id }).lean();
+    if (!course) return res.status(403).json({ success: false, message: "You are not assigned to this course." });
 
     const title = sanitize(req.body.title);
     const objectiveQuestions = Array.isArray(req.body.objectiveQuestions) ? req.body.objectiveQuestions : [];
@@ -661,6 +689,7 @@ router.patch("/assignments/:assignmentId", async (req, res) => {
     assignment.title = title;
     const dueDate = normalizeDueDate(req.body.dueDate);
     if (req.body.dueDate && !dueDate) return res.status(400).json({ success: false, message: "Due date must be a valid date." });
+    if (!isDeadlineWithinOneDay(req.body.dueDate)) return res.status(400).json({ success: false, message: "Assignment deadlines can only be set for today or tomorrow." });
     assignment.dueDate = dueDate;
     assignment.totalMarks = [...normalizedObjectives, ...normalizedTheory].reduce((sum, question) => sum + question.marks, 0);
     assignment.objectiveQuestions = normalizedObjectives;

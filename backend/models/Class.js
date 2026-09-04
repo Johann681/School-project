@@ -6,7 +6,6 @@ const classSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
     level: {
       type: String,
@@ -21,7 +20,6 @@ const classSchema = new mongoose.Schema(
     },
     academicSession: {
       type: String,
-      required: true,
       trim: true,
       index: true,
     },
@@ -34,6 +32,6 @@ const classSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-classSchema.index({ name: 1, academicSession: 1 }, { unique: true });
+classSchema.index({ name: 1 }, { unique: true });
 
 module.exports = mongoose.model("Class", classSchema);

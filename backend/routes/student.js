@@ -29,16 +29,23 @@ router.get("/dashboard", async (req, res) => {
     const studentId = req.user._id;
     const student = await User.findById(studentId)
       .lean()
-      .select("enrolledCourses");
+      .select("enrolledCourses studentClass");
     const approvedRequests = await EnrollmentRequest.find({ studentId, status: "approved" })
       .lean()
       .select("courseId");
-    const enrolledCourseIds = [
+    const directlyEnrolledCourseIds = [
       ...new Set([
         ...(student?.enrolledCourses || []).map(id => id.toString()),
         ...approvedRequests.map((request) => request.courseId.toString()),
       ]),
     ];
+    const classCourses = student?.studentClass
+      ? await Course.find({ targetClass: student.studentClass }).select("_id").lean()
+      : [];
+    const enrolledCourseIds = [...new Set([
+      ...directlyEnrolledCourseIds,
+      ...classCourses.map((course) => course._id.toString()),
+    ])];
 
     const performanceRecords = await Performance.find({ studentId })
       .lean()
@@ -52,7 +59,8 @@ router.get("/dashboard", async (req, res) => {
 
     const courses = await Course.find({ _id: { $in: enrolledCourseIds } })
       .lean()
-      .select("title code materials assignments")
+      .select("title code targetClass materials assignments")
+      .populate("targetClass", "name level section academicSession")
       .sort({ title: 1 });
 
     const structuredAssignments = await Assignment.find({ course: { $in: enrolledCourseIds } })
@@ -165,6 +173,10 @@ router.post("/submit-assignment", async (req, res) => {
 
     // Verify student is enrolled in the course
     const student = await User.findById(req.user._id).lean();
+    const course = await Course.findById(courseId).lean();
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found." });
+    }
     const isEnrolled = student?.enrolledCourses?.some(id => id.toString() === courseId);
     const approvedRequest = await EnrollmentRequest.findOne({
       studentId: req.user._id,
@@ -172,13 +184,9 @@ router.post("/submit-assignment", async (req, res) => {
       status: "approved",
     }).lean();
 
-    if (!isEnrolled && !approvedRequest) {
+    const isClassCourse = student?.studentClass && course.targetClass?.toString() === student.studentClass.toString();
+    if (!isEnrolled && !approvedRequest && !isClassCourse) {
       return res.status(403).json({ success: false, message: "You are not enrolled in this course." });
-    }
-
-    const course = await Course.findById(courseId).lean();
-    if (!course) {
-      return res.status(404).json({ success: false, message: "Course not found." });
     }
 
     const structuredAssignment = assignmentId ? await Assignment.findOne({ _id: assignmentId, course: courseId }).lean() : null;
@@ -285,7 +293,7 @@ router.get("/timetable", async (req, res) => {
       period: `Period ${slot.period}`,
       startTime: slot.startTime,
       endTime: slot.endTime,
-      room: "Room TBD",
+      room: slot.room || "Room TBD",
     }));
 
     return res.json({ success: true, timetable });

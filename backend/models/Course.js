@@ -16,6 +16,11 @@ const courseSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    subject: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subject",
+      index: true,
+    },
     targetClass: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",

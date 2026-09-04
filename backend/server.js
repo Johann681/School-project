@@ -19,9 +19,28 @@ const studentRoutes = require("./routes/student");
 const parentRoutes = require("./routes/parent");
 const attendanceRoutes = require("./routes/attendance");
 const settingsRoutes = require("./routes/settings");
+const SubjectAssignment = require("./models/SubjectAssignment");
+const TimetableSlot = require("./models/TimetableSlot");
+const Class = require("./models/Class");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+async function removeDuplicateSubjectAssignments() {
+  const assignments = await SubjectAssignment.find().sort({ createdAt: 1, _id: 1 }).select("_id subject class").lean();
+  const kept = new Set();
+  const duplicateIds = [];
+  for (const assignment of assignments) {
+    const key = `${assignment.subject}-${assignment.class}`;
+    if (kept.has(key)) duplicateIds.push(assignment._id);
+    else kept.add(key);
+  }
+  if (duplicateIds.length) {
+    await TimetableSlot.deleteMany({ subjectAssignment: { $in: duplicateIds } });
+    await SubjectAssignment.deleteMany({ _id: { $in: duplicateIds } });
+    console.log(`Removed ${duplicateIds.length} duplicate subject assignments before index sync.`);
+  }
+}
 
 const requiredEnv = ["MONGO_URI", "JWT_SECRET"];
 const missingEnv = requiredEnv.filter((key) => !process.env[key]);
@@ -111,6 +130,9 @@ async function startServer() {
     
     // 3. Connect cleanly without passing any old, deprecated options parameters
     await mongoose.connect(dbURI);
+    await removeDuplicateSubjectAssignments();
+    await SubjectAssignment.syncIndexes();
+    await Class.syncIndexes();
     
     console.log('✅ MongoDB connected successfully to the new cloud cluster!');
     
