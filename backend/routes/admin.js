@@ -255,8 +255,10 @@ router.post("/subject-assignments", async (req, res) => {
       if (!assignment || !teacher || !classRecord) return res.status(404).json({ success: false, message: "Assignment, teacher, or class not found." });
       const previousClass = assignment.class;
       const assignmentSubject = subject || await Subject.findById(assignment.subject).select("_id code name");
+      const currentCourse = await Course.findOne({ subject: assignment.subject, targetClass: previousClass }).select("_id").lean();
       const courseInAnotherClass = await Course.findOne({
         subject: assignment.subject,
+        ...(currentCourse ? { _id: { $ne: currentCourse._id } } : {}),
         targetClass: { $ne: classRecord._id },
       }).populate("targetClass", "name").lean();
       if (courseInAnotherClass) return res.status(409).json({ success: false, message: `${assignmentSubject.name} is already assigned to ${courseInAnotherClass.targetClass?.name || "another class"}. A course cannot be assigned to multiple classes.` });
