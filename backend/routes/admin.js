@@ -44,6 +44,7 @@ const buildPasskey = () => {
 };
 
 const buildStudentCode = () => `BOLS-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+const buildTemporaryPassword = () => `Lms9-${crypto.randomBytes(6).toString("base64url")}`;
 
 router.use(requireAuth, requireRole("ADMIN"));
 router.use(async (req, res, next) => {
@@ -205,6 +206,10 @@ router.post("/subject-assignments", async (req, res) => {
       User.find({ _id: { $in: teacherIds }, role: "TEACHER" }),
     ]);
     if (!subject || !classRecord || teachers.length !== new Set(teacherIds.map(String)).size) return res.status(404).json({ success: false, message: "Subject, class, or teacher not found." });
+    const existingCourseForSubject = await Course.findOne({ subject: subject._id }).populate("targetClass", "name").lean();
+    if (existingCourseForSubject) {
+      return res.status(409).json({ success: false, message: `${subject.name} is already assigned to ${existingCourseForSubject.targetClass?.name || "another class"}. A course cannot be assigned to multiple classes.` });
+    }
     const existingSameClass = await SubjectAssignment.findOne({ subject: subject._id, class: classRecord._id }).populate("teacher", "fullName").lean();
     if (existingSameClass) {
       return res.status(409).json({ success: false, message: `${subject.name} is already assigned to ${classRecord.name} with ${existingSameClass.teacher?.fullName || "a teacher"}. A course can only be assigned once per class.` });
@@ -213,7 +218,7 @@ router.post("/subject-assignments", async (req, res) => {
     const courseCode = `${subject.code}-${classRecord.name}`.replace(/[^A-Z0-9-]/gi, "-").toUpperCase();
     const existingCourse = await Course.findOne({ targetClass: classRecord._id, title: subject.name });
     if (existingCourse) {
-      existingCourse.teachers = [...new Set([...existingCourse.teachers.map(String), ...teachers.map((teacher) => teacher._id.toString())])];
+      existingCourse.teachers = [teachers[0]._id];
       existingCourse.subject = subject._id;
       await existingCourse.save();
     } else {
@@ -225,6 +230,57 @@ router.post("/subject-assignments", async (req, res) => {
     return res.status(500).json({ success: false, message: "Unable to create subject assignment." });
   }
 });
+  router.get("/subject-assignments", async (req, res) => {
+    const assignments = await SubjectAssignment.find()
+    .populate("subject", "name code")
+    .populate("class", "name academicSession")
+    .populate("teacher", "fullName email")
+    .sort({ createdAt: -1 })
+    .lean();
+    return res.json({ success: true, assignments });
+  });
+
+  router.patch("/subject-assignments/:id", async (req, res) => {
+    try {
+      const periodsPerWeek = Number(req.body.periodsPerWeek);
+      if (!req.body.teacher || !req.body.class || !Number.isInteger(periodsPerWeek) || periodsPerWeek < 1 || periodsPerWeek > 40) {
+        return res.status(400).json({ success: false, message: "Teacher, class, and periods per week are required." });
+      }
+      const [assignment, teacher, classRecord, subject] = await Promise.all([
+        SubjectAssignment.findById(req.params.id),
+        User.findOne({ _id: req.body.teacher, role: "TEACHER" }).select("_id"),
+        Class.findById(req.body.class).select("_id name"),
+        Subject.findById(req.body.subject || undefined).select("_id code name"),
+      ]);
+      if (!assignment || !teacher || !classRecord) return res.status(404).json({ success: false, message: "Assignment, teacher, or class not found." });
+      const previousClass = assignment.class;
+      const assignmentSubject = subject || await Subject.findById(assignment.subject).select("_id code name");
+      const courseInAnotherClass = await Course.findOne({
+        subject: assignment.subject,
+        targetClass: { $ne: classRecord._id },
+      }).populate("targetClass", "name").lean();
+      if (courseInAnotherClass) return res.status(409).json({ success: false, message: `${assignmentSubject.name} is already assigned to ${courseInAnotherClass.targetClass?.name || "another class"}. A course cannot be assigned to multiple classes.` });
+      const duplicate = await SubjectAssignment.findOne({
+        _id: { $ne: assignment._id },
+        subject: assignment.subject,
+        class: classRecord._id,
+      }).populate("teacher", "fullName").lean();
+      if (duplicate) return res.status(409).json({ success: false, message: `${assignmentSubject.name} is already assigned to ${classRecord.name} with ${duplicate.teacher?.fullName || "a teacher"}.` });
+      assignment.teacher = teacher._id;
+      assignment.class = classRecord._id;
+      assignment.periodsPerWeek = periodsPerWeek;
+      await assignment.save();
+      await Course.updateOne(
+        { subject: assignment.subject, targetClass: previousClass },
+        { $set: { targetClass: classRecord._id, teachers: [teacher._id], code: `${assignmentSubject.code}-${classRecord.name}`.replace(/[^A-Z0-9-]/gi, "-").toUpperCase() } },
+      );
+      await TimetableSlot.deleteMany({ subjectAssignment: assignment._id });
+      return res.json({ success: true, message: "Course teacher updated. Course content was preserved." });
+    } catch (err) {
+      console.error("Update subject assignment error:", err);
+      return res.status(500).json({ success: false, message: "Unable to update course teacher." });
+    }
+  });
 
 router.post("/timetable/generate", async (req, res) => {
   try {
@@ -275,9 +331,11 @@ router.delete("/subject-assignments/:id", async (req, res) => {
   if (!assignment) return res.status(404).json({ success: false, message: "Subject assignment not found." });
   await TimetableSlot.deleteMany({ subjectAssignment: assignment._id });
   const remaining = await SubjectAssignment.find({ subject: assignment.subject, class: assignment.class }).distinct("teacher");
-  await Course.updateOne({ subject: assignment.subject, targetClass: assignment.class }, { $pull: { teachers: assignment.teacher } });
-  if (!remaining.length) await Course.deleteOne({ subject: assignment.subject, targetClass: assignment.class });
-  return res.json({ success: true });
+  await Course.updateOne(
+    { subject: assignment.subject, targetClass: assignment.class },
+    { $set: { teachers: remaining.length ? [remaining[0]] : [] } },
+  );
+  return res.json({ success: true, courseContentPreserved: true, remainingTeachers: remaining.length });
 });
 
 router.get("/timetable", async (req, res) => {
@@ -381,6 +439,24 @@ router.post("/students/:studentId/regenerate-code", async (req, res) => {
   }
 });
 
+router.post("/account-students/:studentId/regenerate-password", async (req, res) => {
+  try {
+    const student = await User.findOne({ _id: req.params.studentId, role: "STUDENT" });
+    if (!student) return res.status(404).json({ success: false, message: "Student account not found." });
+
+    const temporaryPassword = buildTemporaryPassword();
+    student.password = temporaryPassword;
+    student.isActivated = true;
+    student.passkey = undefined;
+    await student.save();
+
+    return res.json({ success: true, temporaryPassword });
+  } catch (err) {
+    console.error("Regenerate Student Password Error:", err);
+    return res.status(500).json({ success: false, message: "Unable to regenerate student password." });
+  }
+});
+
 router.post("/create-teacher", async (req, res) => {
   try {
     const fullName = sanitize(req.body.fullName || req.body.name);
@@ -447,6 +523,7 @@ router.get("/account-students", async (req, res) => {
   try {
     const accountStudents = await User.find({ role: "STUDENT" })
       .select("fullName email isActivated studentCode studentClass enrolledCourses createdAt")
+      .populate("studentClass", "name level section academicSession")
       .sort({ createdAt: -1 })
       .lean();
     return res.json({ success: true, accountStudents });
@@ -457,14 +534,27 @@ router.get("/account-students", async (req, res) => {
 });
 
 router.patch("/account-students/:id", async (req, res) => {
-  const updates = {};
-  if (req.body.fullName !== undefined) updates.fullName = sanitize(req.body.fullName);
-  if (req.body.email !== undefined) updates.email = sanitize(req.body.email).toLowerCase();
-  if (req.body.classRef !== undefined) updates.studentClass = req.body.classRef || undefined;
-  const student = await User.findOneAndUpdate({ _id: req.params.id, role: "STUDENT" }, updates, { new: true, runValidators: true })
-    .populate("studentClass", "name level section academicSession");
-  if (!student) return res.status(404).json({ success: false, message: "LMS student account not found." });
-  return res.json({ success: true, student });
+  try {
+    const updates = {};
+    if (req.body.fullName !== undefined) updates.fullName = sanitize(req.body.fullName);
+    if (req.body.email !== undefined) updates.email = sanitize(req.body.email).toLowerCase();
+    if (req.body.classRef !== undefined) {
+      if (req.body.classRef) {
+        const classRecord = await Class.findById(req.body.classRef).select("_id").lean();
+        if (!classRecord) return res.status(404).json({ success: false, message: "Class not found." });
+        updates.studentClass = classRecord._id;
+      } else {
+        updates.$unset = { studentClass: 1 };
+      }
+    }
+    const student = await User.findOneAndUpdate({ _id: req.params.id, role: "STUDENT" }, updates, { new: true, runValidators: true })
+      .populate("studentClass", "name level section academicSession");
+    if (!student) return res.status(404).json({ success: false, message: "LMS student account not found." });
+    return res.json({ success: true, student });
+  } catch (err) {
+    console.error("Update account student error:", err);
+    return res.status(500).json({ success: false, message: "Unable to update LMS student account." });
+  }
 });
 
 router.delete("/account-students/:id", async (req, res) => {
@@ -498,6 +588,28 @@ router.delete("/students/:id", async (req, res) => {
   } catch (err) {
     console.error("Delete enrolled student error:", err);
     return res.status(500).json({ success: false, message: "Unable to delete enrolled student." });
+  }
+});
+
+router.patch("/students/:id", async (req, res) => {
+  try {
+    const updates = {};
+    if (req.body.classRef !== undefined) {
+      if (req.body.classRef) {
+        const classRecord = await Class.findById(req.body.classRef).select("_id").lean();
+        if (!classRecord) return res.status(404).json({ success: false, message: "Class not found." });
+        updates.classRef = classRecord._id;
+      } else {
+        updates.$unset = { classRef: 1 };
+      }
+    }
+    const student = await Student.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true })
+      .populate("classRef", "name level section academicSession");
+    if (!student) return res.status(404).json({ success: false, message: "Student enrollment not found." });
+    return res.json({ success: true, student });
+  } catch (err) {
+    console.error("Update enrolled student error:", err);
+    return res.status(500).json({ success: false, message: "Unable to update student enrollment." });
   }
 });
 

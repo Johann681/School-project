@@ -102,7 +102,7 @@ router.get("/courses", async (req, res) => {
           (id) => id.toString() === req.user._id.toString(),
         )
       ) {
-        existingCourse.teachers.push(req.user._id);
+        existingCourse.teachers = [req.user._id];
         await existingCourse.save();
       }
     }
