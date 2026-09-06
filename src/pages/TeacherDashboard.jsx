@@ -190,6 +190,7 @@ export default function TeacherDashboard() {
   const pendingReviews = submissionSummary.reduce((sum, summary) => sum + summary.pending, 0);
   const coursesWithoutAssignments = courses.filter((course) => !course.structuredAssignments?.length);
   const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const assignmentTitles = Object.fromEntries(
     (selected?.structuredAssignments || []).map((assignment) => [
       String(assignment._id),
@@ -341,7 +342,7 @@ export default function TeacherDashboard() {
                 >
                   <p className="font-semibold">{c.title}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {c.code} · {c.structuredAssignments?.length || 0} published
+                    {c.code} · Class: {c.targetClass?.name || "Unassigned"} · {c.structuredAssignments?.length || 0} published
                   </p>
                 </button>
               ))}
@@ -426,7 +427,8 @@ export default function TeacherDashboard() {
                     <input
                       className="dash-input"
                       type="date"
-                      min={editingAssignmentId ? undefined : today}
+                      min={today}
+                      max={tomorrow}
                       value={form.dueDate}
                       onChange={(e) =>
                         setForm({ ...form, dueDate: e.target.value })

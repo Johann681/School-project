@@ -502,6 +502,7 @@ const StudentProfile = () => {
       </div>
 
       {activeTab === "registered" && <Panel title="Your next steps" description="Stay ahead of deadlines and keep track of submitted work." className="mb-6"><div className="grid gap-3 sm:grid-cols-3"><button type="button" onClick={() => setExpandedCourseId(dueSoonAssignments.length ? courses.find((course) => course.structuredAssignments?.some((assignment) => assignment._id === dueSoonAssignments[0]._id))?._id : expandedCourseId)} className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left"><Clock3 className="h-5 w-5 text-amber-700" /><p className="mt-3 text-2xl font-bold text-slate-900">{dueSoonAssignments.length}</p><p className="text-sm font-semibold text-slate-800">Due within 3 days</p></button><button type="button" onClick={() => setActiveTab("registered")} className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-left"><Send className="h-5 w-5 text-indigo-700" /><p className="mt-3 text-2xl font-bold text-slate-900">{activeSubmissions.length}</p><p className="text-sm font-semibold text-slate-800">Submitted attempts</p></button><button type="button" onClick={() => setActiveTab("insights")} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-left"><GraduationCap className="h-5 w-5 text-emerald-700" /><p className="mt-3 text-2xl font-bold text-slate-900">{performanceRecords.length}</p><p className="text-sm font-semibold text-slate-800">Grades received</p></button></div>{closedAssignments.length > 0 && <p className="mt-4 text-xs font-medium text-slate-500">{closedAssignments.length} assignment{closedAssignments.length === 1 ? "" : "s"} closed without a submission.</p>}</Panel>}
+      {activeTab === "registered" && structuredAssignments.length > 0 && <Panel title="New assignments" description="All assignments from your courses are shown here." className="mb-6"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{courses.flatMap((course) => (course.structuredAssignments || []).map((assignment) => ({ course, assignment }))).map(({ course, assignment }) => <button key={assignment._id} type="button" onClick={() => { setExpandedCourseId(course._id); setCourseSection("assignments"); }} className="rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-400 hover:shadow-sm"><p className="font-semibold text-slate-900">{assignment.title}</p><p className="mt-1 text-xs text-slate-500">{course.title} · {course.code}</p><p className="mt-2 text-xs font-medium text-indigo-700">{assignment.dueDate ? `Due ${new Date(assignment.dueDate).toLocaleDateString()}` : "No deadline"}</p></button>)}</div></Panel>}
 
       {activeTab === "registered" && (
         <Panel
@@ -540,7 +541,7 @@ const StudentProfile = () => {
                             {course.title}
                           </p>
                           <p className="text-sm text-slate-500">
-                            Code: {course.code}
+                            Code: {course.code} · Class: {course.targetClass?.name || "Unassigned"}
                           </p>
                         </div>
                       </div>
