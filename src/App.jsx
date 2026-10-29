@@ -6,6 +6,8 @@ import Footer from './Components/Footer';
 import Navbar from './Components/Navbar';
 import Login from './pages/Login';
 import AdminLogin from './pages/AdminLogin';
+import LegacyAdminLogin from './Components/Login';
+import LegacyAdminDashboard from './pages/LegacyAdminDashboard';
 import TeacherLogin from './pages/TeacherLogin';
 import StudentLogin from './pages/StudentLogin';
 import ParentLogin from './pages/ParentLogin';
@@ -32,6 +34,7 @@ const LayoutWrapper = ({ children }) => {
     "/parent",
     "/login",
     "/admin-login",
+    "/legacy-admin",
     "/teacher-login",
     "/student-login",
     "/parent-login",
@@ -61,6 +64,8 @@ const App = () => {
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/legacy-admin-login" element={<LegacyAdminLogin />} />
+          <Route path="/legacy-admin" element={<LegacyAdminDashboard />} />
           <Route path="/teacher-login" element={<TeacherLogin />} />
           <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/enroll" element={<Enroll />} />

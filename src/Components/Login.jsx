@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
-import axios from "axios";
+import legacyAdminApi from "../api/legacyAdminClient";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -11,17 +11,13 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Redirect to admin if already logged in
+  // Keep the legacy admin session separate from the current LMS session.
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     if (token) {
-      navigate("/admin");
+      navigate("/legacy-admin");
     }
   }, [navigate]);
-
-  const API_BASE_URL = window.location.hostname === "localhost" 
-    ? "http://localhost:5000/api" 
-    : "https://school-project-i40q.onrender.com/api";
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,14 +29,14 @@ const Login = () => {
     setError("");
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/admin/login`, {
+      const res = await legacyAdminApi.post("/legacy-admin/login", {
         username,
         password,
       });
 
       if (res.data.success) {
         localStorage.setItem("adminToken", res.data.token);
-        navigate("/admin");
+        navigate("/legacy-admin");
       }
     } catch (err) {
       setError(err.response?.data?.message || "Invalid authentication credentials. Please try again.");

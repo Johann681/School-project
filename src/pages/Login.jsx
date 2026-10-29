@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, GraduationCap, ShieldCheck, UserRoundCheck } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -13,78 +12,8 @@ const Login = () => {
             Your school, <span className="text-blue-700">connected.</span>
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
-            Select your role to access the Greater Access Private Schools management system.
+            Welcome to the Greater Access Private Schools management system.
           </p>
-        </div>
-
-        <div className="mx-auto grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Student Login */}
-          <div className="group flex flex-col rounded-2xl border border-blue-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <GraduationCap className="h-8 w-8 text-blue-700" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Student</h2>
-            <p className="text-slate-600 text-sm mb-8 flex-grow">
-              Access your courses, submit assignments, and track your academic progress.
-            </p>
-            <button
-              onClick={() => navigate("/student-login")}
-              className="inline-flex items-center justify-center bg-blue-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all"
-            >
-              Student Login <ArrowRight className="ml-2 w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Teacher Login */}
-          <div className="group flex flex-col rounded-2xl border border-violet-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <UserRoundCheck className="h-8 w-8 text-purple-700" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Teacher</h2>
-            <p className="text-slate-600 text-sm mb-8 flex-grow">
-              Manage your courses, upload materials, and grade student submissions.
-            </p>
-            <button
-              onClick={() => navigate("/teacher-login")}
-              className="inline-flex items-center justify-center bg-purple-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-800 transition-all"
-            >
-              Teacher Login <ArrowRight className="ml-2 w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Administrator Login */}
-          <div className="group flex flex-col rounded-2xl border border-rose-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <ShieldCheck className="h-8 w-8 text-red-700" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Administrator</h2>
-            <p className="text-slate-600 text-sm mb-8 flex-grow">
-              Manage users, create accounts, and oversee the entire platform.
-            </p>
-            <button
-              onClick={() => navigate("/admin-login")}
-              className="inline-flex items-center justify-center bg-red-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-red-800 transition-all"
-            >
-              Admin Login <ArrowRight className="ml-2 w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Parent Login */}
-          <div className="group flex flex-col rounded-2xl border border-emerald-100 bg-white p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <UserRoundCheck className="h-8 w-8 text-emerald-700" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Parent</h2>
-            <p className="text-slate-600 text-sm mb-8 flex-grow">
-              View your linked student’s progress, announcements, and school updates.
-            </p>
-            <button
-              onClick={() => navigate("/parent-login")}
-              className="inline-flex items-center justify-center bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-800 transition-all"
-            >
-              Parent Login <ArrowRight className="ml-2 w-4 h-4" />
-            </button>
-          </div>
         </div>
 
         <div className="text-center mt-16">

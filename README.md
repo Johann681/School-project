@@ -1,12 +1,14 @@
-# React + Vite
+# Greater Access Private Schools LMS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repository contains the React/Vite school portal and its Express/MongoDB API.
 
-Currently, two official plugins are available:
+## Legacy enrolled-student admin
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The legacy admin login is separate from the LMS admin account system. It uses the `Admin` collection and stores its token as `adminToken`. Its dashboard only reads enrollment records from the `Student` collection.
 
-## Expanding the ESLint configuration
+1. Set `MONGO_URI`, `JWT_SECRET`, `LEGACY_ADMIN_USERNAME`, and `LEGACY_ADMIN_PASSWORD` in `backend/.env`. Use a legacy admin password of at least 12 characters.
+2. From `backend`, run `npm run create:legacy-admin` once to create the separate account.
+3. Start the backend and frontend as usual.
+4. Open `/legacy-admin-login` to sign in. The student-only dashboard is at `/legacy-admin`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The current LMS admin remains available at `/admin-login` and is not used by this legacy dashboard.
